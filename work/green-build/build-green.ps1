@@ -3,14 +3,15 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $root = Join-Path $repo 'work\green-build'
 $tools = Join-Path $repo 'work\sea-toolchain'
-$stage = Join-Path $root 'stage\老殷工控PLC助手'
-$ver = 'v1.0'
-$zip = Join-Path $root ("老殷工控PLC助手_绿色免安装版_" + $ver + ".zip")
+$stageRoot = Join-Path $root 'stage'
+$stage = Join-Path $stageRoot '老殷工控PLC助手'
+$ver = 'v1.0.2'
+$zip = Join-Path $root ("LaoyinPLC-Green-" + $ver + ".zip")
 $node = 'D:\DevTools\nodejs\node.exe'
 $signtool = 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe'
 $csc = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 
-if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force }
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 foreach ($d in @('app','app\work\logs','app\work\db-backups','app\tools','runtime','说明文档\screenshots')) {
     [System.IO.Directory]::CreateDirectory((Join-Path $stage $d)) | Out-Null
@@ -79,14 +80,17 @@ Get-ChildItem -LiteralPath (Join-Path $appDir 'engine') -Recurse -Force -File |
 
 # 3. Compile the tray launcher.
 $launcher = Join-Path $stage '老殷工控PLC助手.exe'
-& $csc /nologo /target:winexe /optimize+ /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /out:$launcher (Join-Path $root 'launcher.cs')
+& $csc /nologo /target:winexe /optimize+ /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll /out:$launcher (Join-Path $root 'launcher.cs')
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $launcher)) { throw 'launcher compile failed' }
+$updater = Join-Path $stage '老殷工控PLC助手更新器.exe'
+& $csc /nologo /target:winexe /optimize+ /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /out:$updater (Join-Path $root 'updater.cs')
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $updater)) { throw 'updater compile failed' }
 
 # 4. Customer documentation.
 $enc = [System.Text.UTF8Encoding]::new($false)
 $docsDir = Join-Path $stage '说明文档'
 [System.IO.File]::WriteAllText((Join-Path $stage 'README_请先看.txt'), @"
-【老殷工控 PLC 助手 - 绿色免安装版 v1.0】
+【老殷工控 PLC 助手 - 绿色免安装版 v1.0.2】
 
 使用方法
 1. 将 ZIP 完整解压到任意本地文件夹，不要在压缩包内直接运行。
@@ -104,6 +108,7 @@ $docsDir = Join-Path $stage '说明文档'
 目录结构
 - 老殷工控PLC助手.exe：启动器与托盘管理
 - runtime\laoyin-server.exe：SEA 单文件后端（不需要客户安装 Node.js）
+- 老殷工控PLC助手更新器.exe：安全更新与失败回滚
 - app\web、HTML、CSS：浏览器界面资产
 - app\engine：TIA Openness、MCP 与 PowerShell 引擎（必须保持真实路径）
 - app\tools\diagnose-tia.ps1：客户环境诊断脚本
@@ -143,6 +148,23 @@ if ((Get-ChildItem -LiteralPath (Join-Path $appDir 'work\db-backups') -File).Cou
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip, [System.IO.Compression.CompressionLevel]::Optimal, $true)
-$sizeMB = [math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)
+$zipInfo = Get-Item -LiteralPath $zip
+$zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$manifest = [ordered]@{
+    product = '老殷工控PLC助手'
+    version = $ver.TrimStart('v')
+    packageUrl = 'https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/work/green-build/LaoyinPLC-Green-v1.0.2.zip'
+    sha256 = $zipHash
+    sizeBytes = [int64]$zipInfo.Length
+    releaseNotes = '增加启动失败安全诊断日志，便于客户环境排查；保留联网检查更新、SHA256 校验、失败回滚与客户数据保护。'
+    minLauncherVersion = $ver.TrimStart('v')
+    publishedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+$manifestPath = Join-Path $repo 'update-manifest.json'
+$manifestJson = $manifest | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText($manifestPath, $manifestJson, [System.Text.UTF8Encoding]::new($false))
+$sizeMB = [math]::Round($zipInfo.Length / 1MB, 1)
 Write-Output ("ZIP: " + $zip)
 Write-Output ("SIZE_MB: " + $sizeMB)
+Write-Output ("MANIFEST: " + $manifestPath)
+Write-Output ("SHA256: " + $zipHash)

@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $gb = 'F:\工控软件\老殷工控PLC助手\work\green-build'
 $repo = 'F:\工控软件\老殷工控PLC助手'
-$zip = Join-Path $gb '老殷工控PLC助手_绿色免安装版_v1.0.zip'
+$zip = Join-Path $gb 'LaoyinPLC-Green-v1.0.2.zip'
 $extract = Join-Path $gb 'verify-extract-final'
 $evidence = Join-Path $gb 'verify-final-evidence.txt'
 $lines = New-Object System.Collections.Generic.List[string]
@@ -33,6 +33,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root = Join-Path $extract '老殷工控PLC助手'
 $required = @(
     '老殷工控PLC助手.exe',
+    '老殷工控PLC助手更新器.exe',
     'runtime\laoyin-server.exe',
     'app\login.html',
     'app\web\app.js',
@@ -59,13 +60,15 @@ Log ('Required entries missing: ' + $missing.Count)
 Log ('Forbidden directories: ' + $badDirs.Count)
 Log ('Forbidden files: ' + $badFiles.Count)
 Log ('Runtime Node bundled: ' + $runtimeNode + ' (expect False)')
+$updaterPresent = Test-Path -LiteralPath (Join-Path $root '老殷工控PLC助手更新器.exe')
+Log ('Updater executable present: ' + $updaterPresent)
 Log ('Fresh logs directory: ' + $emptyLogs)
 Log ('Fresh DB backup directory: ' + $emptyBackups)
 if ($missing.Count -gt 0) { $missing | ForEach-Object { Log ('  missing: ' + $_) } }
 if ($badDirs.Count -gt 0) { $badDirs | ForEach-Object { Log ('  bad dir: ' + $_.FullName) } }
 if ($badFiles.Count -gt 0) { $badFiles | ForEach-Object { Log ('  bad file: ' + $_.FullName) } }
 if ($missing.Count -gt 0 -or $badDirs.Count -gt 0 -or $badFiles.Count -gt 0 -or
-    $runtimeNode -or -not $emptyLogs -or -not $emptyBackups) {
+    $runtimeNode -or -not $emptyLogs -or -not $emptyBackups -or -not $updaterPresent) {
     Log 'FAIL: package purity/structure gate'
     Finish 1
 }
@@ -146,7 +149,35 @@ if ($tamper.ExitCode -ne 78) {
 }
 Log 'PASS: tampered license refusal'
 
-Log '--- 5. TIA capability availability ---'
+Log '--- 5. Update contract and remote publication inputs ---'
+$manifestPath = Join-Path $repo 'update-manifest.json'
+$manifestPresent = Test-Path -LiteralPath $manifestPath
+Log ('Update manifest present: ' + $manifestPresent)
+if (-not $manifestPresent) {
+    Log 'FAIL: update manifest missing'
+    Finish 1
+}
+$manifest = [IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+$manifestZip = [IO.Path]::GetFileName([Uri]$manifest.packageUrl)
+$zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+Log ('Manifest package filename: ' + $manifestZip)
+Log ('Manifest size matches: ' + ([int64]$manifest.sizeBytes -eq (Get-Item -LiteralPath $zip).Length))
+Log ('Manifest SHA256 matches: ' + ($manifest.sha256.ToLowerInvariant() -eq $zipHash))
+if ($manifestZip -ne (Split-Path -Leaf $zip) -or [int64]$manifest.sizeBytes -ne (Get-Item -LiteralPath $zip).Length -or $manifest.sha256.ToLowerInvariant() -ne $zipHash) {
+    Log 'FAIL: update manifest does not match package'
+    Finish 1
+}
+if ([string]$manifest.packageUrl -notmatch '^https://raw\.githubusercontent\.com/kcylp/laoyin-plc-ai/main/.+\.zip$') {
+    Log 'FAIL: update manifest package URL is not the trusted GitHub Raw URL'
+    Finish 1
+}
+if ([string]$manifest.version -ne '1.0.2' -or [string]$manifest.minLauncherVersion -ne '1.0.2') {
+    Log 'FAIL: update manifest version contract'
+    Finish 1
+}
+Log 'Manifest package URL: trusted GitHub Raw HTTPS'
+Log 'Manifest version: 1.0.2'
+Log '--- 6. TIA capability availability ---'
 $tiaExe = Join-Path $root 'app\engine\tia-mcp\runtime\v21\TiaMcpServer.exe'
 $tiaInstalled = Test-Path -LiteralPath 'C:\Program Files\Siemens\Automation\Portal V21'
 Log ('TiaMcpServer.exe present in package: ' + (Test-Path -LiteralPath $tiaExe))

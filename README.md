@@ -1,4 +1,4 @@
-老殷工控 PLC 助手 — 西门子 TIA Portal V21 编程 AI 工作台
+﻿老殷工控 PLC 助手 — 西门子 TIA Portal V21 编程 AI 工作台
 
 # 老殷工控 PLC 助手
 
@@ -47,3 +47,11 @@ npm start
 - 启动时备份 `plc_assistant.db` 到 `work/db-backups/`，保留最近 7 份。
 - `/api/env-check` 返回 `healthScore` 与 `issues`，用于首屏环境健康判断。
 - `npm test` 运行单元与结构回归；`npm run e2e` 运行五个 UX 冒烟旅程并输出截图。
+
+## 在线更新与公开发布
+
+- 绿色版 v1.0.1 起，托盘菜单提供“检查更新”；清单与 ZIP 只从公开 GitHub Raw HTTPS 读取。
+- 网络异常、清单缺失或 GitHub 返回错误时，程序只显示“当前无法检查更新，请稍后重试”，不会把 404 页面展示给客户，也不会影响当前版本。
+- 发布顺序：先运行 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\work\green-build\build-green.ps1，再计算 ZIP 的 SHA256/字节数并更新根目录 update-manifest.json，最后提交并推送源码、ZIP、清单同一版本。
+- 更新器会再次校验大小和 SHA256，拒绝危险 ZIP 路径，不覆盖 %LOCALAPPDATA%\老殷工控PLC助手 下的授权、数据库、API Key 与个人数据；启动健康检查失败时回滚旧版本。
+- GitHub 仓库地址：https://github.com/kcylp/laoyin-plc-ai。当前公开绿色包下载路径为：https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/work/green-build/LaoyinPLC-Green-v1.0.2.zip。不要只更新源码而不更新绿色 ZIP 和 manifest。

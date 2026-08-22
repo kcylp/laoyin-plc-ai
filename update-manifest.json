@@ -1,0 +1,10 @@
+{
+    "product":  "老殷工控PLC助手",
+    "version":  "1.0.2",
+    "packageUrl":  "https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/work/green-build/LaoyinPLC-Green-v1.0.2.zip",
+    "sha256":  "c3aecb8e33159c021d06f26cf46c8914b2775cc12e83681eaab05928ef984694",
+    "sizeBytes":  39624748,
+    "releaseNotes":  "增加启动失败安全诊断日志，便于客户环境排查；保留联网检查更新、SHA256 校验、失败回滚与客户数据保护。",
+    "minLauncherVersion":  "1.0.2",
+    "publishedAt":  "2026-08-22T09:45:10Z"
+}
