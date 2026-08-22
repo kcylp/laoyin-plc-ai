@@ -10,7 +10,6 @@ using Siemens.Engineering.Online;
 using Siemens.Engineering.Online.Configurations;
 using Siemens.Engineering.SW.Alarm;
 using Siemens.Engineering.SW.OpcUa;
-using Siemens.Engineering.HmiUnified;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.Multiuser;
@@ -297,11 +296,20 @@ namespace TiaMcpServer.Siemens
 
         private bool TryGetUnifiedSoftware(StringBuilder sb, DeviceItem deviceItem, List<bool> ancestorStates, SoftwareContainer? softwareContainer, bool hasSoftware)
         {
-            if (softwareContainer?.Software is HmiSoftware hmiSoftware)
+            // TIA V19+ exposes Unified HMI objects at runtime, but the installed V21
+            // PublicAPI reference set does not publish the HmiUnified namespace for
+            // compile-time use. Keep this probe reflection-based so the server can
+            // build against the official PublicAPI while still recognizing the object
+            // when a matching TIA installation supplies it at runtime.
+            var unified = softwareContainer?.Software;
+            var unifiedTypeName = unified?.GetType().FullName;
+            if (unified != null &&
+                string.Equals(unifiedTypeName, "Siemens.Engineering.HmiUnified.HmiSoftware", StringComparison.Ordinal))
             {
                 var hasOtherItems = (deviceItem.Items != null && deviceItem.Items.Count > 0) ||
                                     (deviceItem.DeviceItems != null && deviceItem.DeviceItems.Count > 0);
-                sb.AppendLine($"{GetTreePrefix(ancestorStates, !hasOtherItems && !hasSoftware)}HmiSoftware: {hmiSoftware.Name} [HMI Program]");
+                var name = unified.GetType().GetProperty("Name")?.GetValue(unified)?.ToString() ?? unifiedTypeName;
+                sb.AppendLine($"{GetTreePrefix(ancestorStates, !hasOtherItems && !hasSoftware)}HmiSoftware: {name} [HMI Program]");
                 hasSoftware = true;
             }
 

@@ -10,7 +10,6 @@ using Siemens.Engineering.Online;
 using Siemens.Engineering.Online.Configurations;
 using Siemens.Engineering.SW.Alarm;
 using Siemens.Engineering.SW.OpcUa;
-using Siemens.Engineering.HmiUnified;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.Multiuser;
@@ -1209,10 +1208,13 @@ namespace TiaMcpServer.Siemens
                 return (classic.Name, "Classic", TryListScreens(classic));
             }
 
-            // Unified (HmiSoftware)
-            if (sw is HmiSoftware unified)
+            // Unified HMI is intentionally resolved by runtime type name. TIA V21
+            // does not expose Siemens.Engineering.HmiUnified in the compile-time
+            // PublicAPI reference set, although a matching runtime may provide it.
+            if (string.Equals(sw.GetType().FullName, "Siemens.Engineering.HmiUnified.HmiSoftware", StringComparison.Ordinal))
             {
-                return (unified.Name, "Unified", TryListScreens(unified));
+                var name = sw.GetType().GetProperty("Name")?.GetValue(sw)?.ToString() ?? sw.ToString();
+                return (name, "Unified", TryListScreens(sw));
             }
 
             return (sw.ToString(), "Unknown", new List<string>());

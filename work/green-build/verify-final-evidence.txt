@@ -1,4 +1,4 @@
-﻿===== Green package final verification 2026-08-21 21:04:03 =====
+﻿===== Green package final verification 2026-08-21 21:39:51 =====
 --- 1. Build ---
 asset bundle.cjs 2.72 MiB [compared for emit] [minimized] (name: main) 1 related asset
 runtime modules 982 bytes 3 modules
@@ -28,13 +28,13 @@ Critical dependency: the request of a dependency is an expression
 1 warning has detailed information that is not shown.
 Use 'stats.errorDetails: true' resp. '--stats-error-details' to show it.
 
-webpack 5.109.2 compiled with 1 warning in 11794 ms
+webpack 5.109.2 compiled with 1 warning in 14330 ms
 [36mStart injection of NODE_SEA_BLOB in F:\工控软件\老殷工控PLC助手\work\green-build\stage\老殷工控PLC助手\runtime\laoyin-server.exe...[0m
 [32m💉 Injection done![0m
 ZIP: F:\工控软件\老殷工控PLC助手\work\green-build\老殷工控PLC助手_绿色免安装版_v1.0.zip
 SIZE_MB: 37.8
 --- 2. Extract and purity ---
-ZIP bytes: 39609705
+ZIP bytes: 39612882
 Required entries missing: 0
 Forbidden directories: 0
 Forbidden files: 0
@@ -43,8 +43,8 @@ Fresh logs directory: True
 Fresh DB backup directory: True
 PASS: package purity/structure gate
 --- 3. Clean-profile launcher boot ---
-Launcher PID: 44228
-Cold start ms: 3860
+Launcher PID: 55884
+Cold start ms: 3660
 License API ok: True
 Trial remaining days: 60
 Login HTTP: 200

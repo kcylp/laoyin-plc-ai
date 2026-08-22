@@ -15,7 +15,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_KEY
-        value: plc-admin-2024
+        generateValue: true
 
 databases:
   - name: plc-assistant-db

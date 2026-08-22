@@ -1,3 +1,5 @@
+老殷工控 PLC 助手 — 西门子 TIA Portal V21 编程 AI 工作台
+
 # 老殷工控 PLC 助手
 
 老殷工控 PLC 助手是一套面向西门子 TIA Portal 的本机工程助手。前端提供三栏工程工作台，后端负责账号、AI 会话、写入队列、历史快照与博途在线引擎编排，底层通过 EngineerYin 与 TIA MCP 操作本机已打开的 TIA 工程。
