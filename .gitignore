@@ -124,3 +124,9 @@ work/green-build/verify-clean-profile/
 work/green-build/verify-tamper-profile/
 work/green-build/老殷工控PLC助手_绿色版_v0.1.zip
 work/sea-toolchain/
+
+# 本地交接包与脱敏诊断产物（不提交压缩包/环境报告）
+work/handoff/
+work/diagnostics/
+work/green-build/*.zip
+work/green-build/*.tar

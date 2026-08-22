@@ -1,6 +1,6 @@
 ﻿# Green portable build: launcher EXE + Node SEA backend + external UI/TIA assets.
 $ErrorActionPreference = 'Stop'
-$repo = 'F:\工控软件\老殷工控PLC助手'
+$repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $root = Join-Path $repo 'work\green-build'
 $tools = Join-Path $repo 'work\sea-toolchain'
 $stage = Join-Path $root 'stage\老殷工控PLC助手'
@@ -12,25 +12,38 @@ $csc = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-foreach ($d in @('app','app\work\logs','app\work\db-backups','runtime','说明文档\screenshots')) {
+foreach ($d in @('app','app\work\logs','app\work\db-backups','app\tools','runtime','说明文档\screenshots')) {
     [System.IO.Directory]::CreateDirectory((Join-Path $stage $d)) | Out-Null
 }
 
 # 1. Bundle backend and create SEA executable.
-Push-Location $tools
+
+# Webpack inspects package.json as a directory description file. Keep the
+# historical UTF-8 BOM in the repository, but remove it only during this
+# local build and restore the exact original bytes even when the build fails.
+$packageJsonPath = Join-Path $repo 'package.json'
+$packageJsonBytes = [System.IO.File]::ReadAllBytes($packageJsonPath)
+$packageJsonHasBom = $packageJsonBytes.Length -ge 3 -and $packageJsonBytes[0] -eq 0xEF -and $packageJsonBytes[1] -eq 0xBB -and $packageJsonBytes[2] -eq 0xBF
+if ($packageJsonHasBom) { [System.IO.File]::WriteAllBytes($packageJsonPath, $packageJsonBytes[3..($packageJsonBytes.Length - 1)]) }
 try {
-    & (Join-Path $tools 'node_modules\.bin\webpack.cmd') --config (Join-Path $tools 'webpack.config.js')
-    if ($LASTEXITCODE -ne 0) { throw 'webpack failed' }
-    & $node --experimental-sea-config (Join-Path $tools 'sea-config.json')
-    if ($LASTEXITCODE -ne 0) { throw 'SEA blob failed' }
-    $serverExe = Join-Path $stage 'runtime\laoyin-server.exe'
-    Copy-Item -LiteralPath $node -Destination $serverExe
-    & $signtool remove /s $serverExe | Out-Null
-    & (Join-Path $tools 'node_modules\.bin\postject.cmd') $serverExe NODE_SEA_BLOB (Join-Path $tools 'sea-prep.blob') --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --overwrite
-    if ($LASTEXITCODE -ne 0) { throw 'SEA injection failed' }
+    Push-Location $tools
+    try {
+        & (Join-Path $tools 'node_modules\.bin\webpack.cmd') --config (Join-Path $tools 'webpack.config.js')
+        if ($LASTEXITCODE -ne 0) { throw 'webpack failed' }
+        & $node --experimental-sea-config (Join-Path $tools 'sea-config.json')
+        if ($LASTEXITCODE -ne 0) { throw 'SEA blob failed' }
+        $serverExe = Join-Path $stage 'runtime\laoyin-server.exe'
+        Copy-Item -LiteralPath $node -Destination $serverExe
+        & $signtool remove /s $serverExe | Out-Null
+        & (Join-Path $tools 'node_modules\.bin\postject.cmd') $serverExe NODE_SEA_BLOB (Join-Path $tools 'sea-prep.blob') --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --overwrite
+        if ($LASTEXITCODE -ne 0) { throw 'SEA injection failed' }
+    } finally {
+        Pop-Location
+    }
 } finally {
-    Pop-Location
+    if ($packageJsonHasBom) { [System.IO.File]::WriteAllBytes($packageJsonPath, $packageJsonBytes) }
 }
+
 
 # 2. External assets required by browser and TIA Openness.
 $appDir = Join-Path $stage 'app'
@@ -40,6 +53,11 @@ Get-ChildItem -LiteralPath $repo -File -Filter '*.html' | Copy-Item -Destination
 Get-ChildItem -LiteralPath $repo -File -Filter '*.css' | Copy-Item -Destination $appDir
 Copy-Item -LiteralPath (Join-Path $repo 'web') -Destination $appDir -Recurse
 Copy-Item -LiteralPath (Join-Path $repo 'engine') -Destination $appDir -Recurse
+Copy-Item -LiteralPath (Join-Path $repo 'tools\diagnose-tia.ps1') -Destination (Join-Path $appDir 'tools')
+# Never ship MCP startup logs or other runtime log files.
+Get-ChildItem -LiteralPath $appDir -Recurse -Force -File |
+    Where-Object { $_.Extension -eq '.log' -or $_.Name -like '*.startup.log' } |
+    Remove-Item -Force
 
 # The runtime needs the external PowerShell/TIA assets, but customer packages
 # must not carry the repository's test tree or C# development sources.
@@ -88,6 +106,7 @@ $docsDir = Join-Path $stage '说明文档'
 - runtime\laoyin-server.exe：SEA 单文件后端（不需要客户安装 Node.js）
 - app\web、HTML、CSS：浏览器界面资产
 - app\engine：TIA Openness、MCP 与 PowerShell 引擎（必须保持真实路径）
+- app\tools\diagnose-tia.ps1：客户环境诊断脚本
 - app\work：运行日志与数据库备份目录
 - 说明文档：用户手册与验收截图
 
@@ -97,7 +116,10 @@ $docsDir = Join-Path $stage '说明文档'
 - TIA 功能需要本机安装兼容的 Siemens TIA Portal/Openness 环境。
 "@, $enc)
 
-$manual = Join-Path $repo 'docs\green-edition\绿色版用户手册.md'
+$handoffDocs = Join-Path $repo 'docs\handoff'
+if (Test-Path -LiteralPath $handoffDocs) {
+    Get-ChildItem -LiteralPath $handoffDocs -File -Filter '*.md' | Copy-Item -Destination $docsDir
+}$manual = Join-Path $repo 'docs\green-edition\绿色版用户手册.md'
 if (Test-Path -LiteralPath $manual) { Copy-Item -LiteralPath $manual -Destination $docsDir }
 foreach ($ext in @('docx','pdf')) {
     $doc = Join-Path $repo ("docs\green-edition\绿色版用户手册." + $ext)

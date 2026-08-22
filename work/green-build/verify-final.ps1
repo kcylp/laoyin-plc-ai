@@ -38,6 +38,7 @@ $required = @(
     'app\web\app.js',
     'app\engine\src\EngineerYin.psm1',
     'app\engine\src\YinImportCore.ps1',
+    'app\tools\diagnose-tia.ps1',
     'app\engine\tia-mcp\runtime\v21\TiaMcpServer.exe',
     'README_请先看.txt'
 )
@@ -48,7 +49,7 @@ $badDirs = @(Get-ChildItem -LiteralPath $root -Recurse -Force -Directory | Where
 $badFiles = @(Get-ChildItem -LiteralPath $root -Recurse -Force -File | Where-Object {
     $_.Name -in @('.env', 'server.js', 'license.js', 'sea-entry.js', 'package.json', 'package-lock.json') -or
     $_.Name -like '*.test.js' -or $_.Name -like 'probe-*' -or
-    $_.Name -like 'stress-*' -or $_.Name -like 'e2e-*' -or $_.Name -like 'smoke-*'
+    $_.Name -like 'stress-*' -or $_.Name -like 'e2e-*' -or $_.Name -like 'smoke-*' -or $_.Extension -eq '.log'
 })
 $runtimeNode = Test-Path -LiteralPath (Join-Path $root 'runtime\node.exe')
 $emptyLogs = (Get-ChildItem -LiteralPath (Join-Path $root 'app\work\logs') -Force -File | Measure-Object).Count -eq 0

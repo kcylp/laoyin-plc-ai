@@ -132,18 +132,14 @@ namespace TiaMcpServer.Siemens
 
         private static string? GetTiaPortalInstallPath()
         {
-            // 1. Explicit CLI override (--tia-portal-location). Highest priority — needed when TIA
-            //    is installed at a non-default location (e.g. D:\app\TIA20\Portal V20) and the
-            //    registry/env var path is wrong or absent.
+            // 1. Explicit CLI override (--tia-portal-location). Highest priority.
             if (!string.IsNullOrWhiteSpace(TiaPortalLocationOverride) && Directory.Exists(TiaPortalLocationOverride))
             {
                 return TiaPortalLocationOverride;
             }
 
-            // 2. env var (Cursor MCP env or user env) — but it is version-agnostic and on
-            //    multi-version machines it typically points at ONE install (e.g. V21), which
-            //    used to hijack V20 assembly resolution ("Could not find DLL ... for version 20").
-            //    Only trust it when its path names the version we need (or names no version).
+            // 2. Version-specific environment variable. Do not silently use a
+            // different TIA major version on machines with side-by-side installs.
             var env = Environment.GetEnvironmentVariable("TiaPortalLocation");
             bool envUsable = !string.IsNullOrWhiteSpace(env) && Directory.Exists(env);
             if (envUsable && PathMatchesVersion(env!, TiaMajorVersion))
@@ -151,23 +147,91 @@ namespace TiaMcpServer.Siemens
                 return env;
             }
 
-            // 3. Version-specific registry entry — authoritative on multi-version machines.
-            var subKeyName = $@"SOFTWARE\Siemens\Automation\_InstalledSW\TIAP{TiaMajorVersion}\TIA_Opns";
-
-            using (var regBaseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-            using (var tiaOpnsKey = regBaseKey.OpenSubKey(subKeyName))
+            // 3. Siemens' optional _InstalledSW TIA_Opns registration.
+            var installedRoot = $@"SOFTWARE\Siemens\Automation\_InstalledSW\TIAP{TiaMajorVersion}";
+            var tiaOpnsPath = ReadRegistryPath(installedRoot + @"\TIA_Opns");
+            if (Directory.Exists(tiaOpnsPath))
             {
-                var regPath = tiaOpnsKey?.GetValue("Path")?.ToString();
-                if (!string.IsNullOrWhiteSpace(regPath) && Directory.Exists(regPath))
+                return tiaOpnsPath;
+            }
+
+            // 4. EditionMain is present on installations where TIA_Opns is not.
+            var editionPath = ReadRegistryPath(installedRoot + @"\EditionMain");
+            if (Directory.Exists(editionPath))
+            {
+                return editionPath;
+            }
+
+            // 5. The Openness hive records the exact Siemens.Engineering.Base.dll
+            // location. Derive Portal Vxx from that path when the vendor's
+            // _InstalledSW subkey is absent (the common customer failure mode).
+            foreach (var framework in new[] { "net48", "net47" })
+            {
+                var opennessKey = $@"SOFTWARE\Siemens\Automation\Openness\{TiaMajorVersion}.0\PublicAPI\{TiaMajorVersion}.0.0.0\{framework}";
+                var assemblyPath = ReadRegistryValue(opennessKey, "Siemens.Engineering.Base");
+                var opennessRoot = PortalRootFromAssemblyPath(assemblyPath);
+                if (Directory.Exists(opennessRoot))
                 {
-                    return regPath;
+                    return opennessRoot;
                 }
             }
 
-            // 4. Last resort: the env var even when its version looks different — better than nothing.
-            return envUsable ? env : null;
+            // 6. Standard Program Files location, including non-registry
+            // installs where the user kept the vendor default folder.
+            var defaultRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Siemens", "Automation", $"Portal V{TiaMajorVersion}");
+            if (Directory.Exists(defaultRoot))
+            {
+                return defaultRoot;
+            }
+
+            // A version-mismatched env var is deliberately not used: loading a
+            // V21 assembly into the V20 process produces a misleading CLR error.
+            return null;
         }
 
+        private static string? ReadRegistryPath(string keyPath)
+        {
+            var path = ReadRegistryValue(keyPath, "Path");
+            return string.IsNullOrWhiteSpace(path) ? null : path.TrimEnd('\\', '/');
+        }
+
+        private static string? ReadRegistryValue(string keyPath, string valueName)
+        {
+            foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+            {
+                try
+                {
+                    using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                    using var key = baseKey.OpenSubKey(keyPath);
+                    var value = key?.GetValue(valueName)?.ToString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        return value;
+                    }
+                }
+                catch
+                {
+                    // A locked or missing registry view is not fatal; try the other view.
+                }
+            }
+            return null;
+        }
+
+        private static string? PortalRootFromAssemblyPath(string? assemblyPath)
+        {
+            if (string.IsNullOrWhiteSpace(assemblyPath)) return null;
+            var normalized = assemblyPath.Trim().TrimEnd('\\', '/');
+            var marker = $"\\PublicAPI\\V{TiaMajorVersion}\\";
+            var index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+            {
+                marker = $"\\PublicAPI\\{TiaMajorVersion}.0.0.0\\";
+                index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            }
+            return index > 0 ? normalized.Substring(0, index) : null;
+        }
         /// <summary>True when the path names no version at all, or names exactly V{version}.</summary>
         private static bool PathMatchesVersion(string path, int version)
         {
