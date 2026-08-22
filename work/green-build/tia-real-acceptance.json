@@ -1,0 +1,158 @@
+{
+    "timestamp":  "2026-08-07T01:14:32.4127891-04:00",
+    "connect":  {
+                    "success":  true,
+                    "connected":  true,
+                    "attached":  "已挂接工程「Demo_Scaffold_F」",
+                    "state":  {
+                                  "isConnected":  true,
+                                  "project":  "Demo_Scaffold_F",
+                                  "session":  "-",
+                                  "message":  "TIA-Portal MCP server state retrieved",
+                                  "meta":  {
+                                               "timestamp":  "2026-08-07T01:14:32.6711858-04:00",
+                                               "success":  true
+                                           }
+                              }
+                },
+    "compileBefore":  {
+                          "success":  true,
+                          "tool":  "CompileAndDiagnosePlc",
+                          "dangerous":  false,
+                          "json":  {
+                                       "state":  "Success",
+                                       "errorCount":  0,
+                                       "warningCount":  0,
+                                       "errors":  [
+
+                                                  ],
+                                       "warnings":  [
+
+                                                    ],
+                                       "info":  [
+                                                    "State=Information; Description=No block was compiled. All blocks are up-to-date.; DateTime=2026/8/7 5:14:33"
+                                                ],
+                                       "rawMessages":  [
+                                                           "State=Information; Path=PLC_1; DateTime=2026/8/7 5:14:33",
+                                                           "State=Information; Path=Program blocks; DateTime=2026/8/7 5:14:33",
+                                                           "State=Information; Description=No block was compiled. All blocks are up-to-date.; DateTime=2026/8/7 5:14:33",
+                                                           "State=Success; Description=Compiling finished (errors: 0; warnings: 0); DateTime=2026/8/7 5:14:33"
+                                                       ],
+                                       "message":  "Software \u0027PLC_1\u0027 compiled. State=Success Errors=0 Warnings=0",
+                                       "meta":  {
+                                                    "timestamp":  "2026-08-07T01:14:34.4974539-04:00",
+                                                    "success":  true,
+                                                    "errorDetailCount":  0,
+                                                    "warningDetailCount":  0
+                                                }
+                                   },
+                          "text":  "{\"state\":\"Success\",\"errorCount\":0,\"warningCount\":0,\"errors\":[],\"warnings\":[],\"info\":[\"State=Information; Description=No block was compiled. All blocks are up-to-date.; DateTime=2026/8/7 5:14:33\"],\"rawMessages\":[\"State=Information; Path=PLC_1; DateTime=2026/8/7 5:14:33\",\"State=Information; Path=Program blocks; DateTime=2026/8/7 5:14:33\",\"State=Information; Description=No block was compiled. All blocks are up-to-date.; DateTime=2026/8/7 5:14:33\",\"State=Success; Description=Compiling finished (errors: 0; warnings: 0); DateTime=2026/8/7 5:14:33\"],\"message\":\"Software \\u0027PLC_1\\u0027 compiled. State=Success Errors=0 Warnings=0\",\"meta\":{\"timestamp\":\"2026-08-07T01:14:34.4974539-04:00\",\"success\":true,\"errorDetailCount\":0,\"warningDetailCount\":0}}"
+                      },
+    "writeSource":  {
+                        "success":  true,
+                        "tool":  "WritePlcSclSourceFile",
+                        "dangerous":  false,
+                        "json":  {
+                                     "message":  "SCL source written to \u0027C:\\Users\\lenovo\\AppData\\Local\\Temp\\FC_GreenAcceptance_20260807.scl\u0027. To import in TIA Portal: project tree → \u0027External source files\u0027 → \u0027Add new external file\u0027 → select this .scl → right-click the source → \u0027Generate blocks from source\u0027. (Or call ImportPlcExternalSource then GenerateBlocksFromExternalSource if connected.)",
+                                     "meta":  {
+                                                  "timestamp":  "2026-08-07T01:14:34.5788969-04:00",
+                                                  "success":  true,
+                                                  "path":  "C:\\Users\\lenovo\\AppData\\Local\\Temp\\FC_GreenAcceptance_20260807.scl",
+                                                  "blockName":  "FC_GreenAcceptance_20260807",
+                                                  "bytes":  185
+                                              }
+                                 },
+                        "text":  "{\"message\":\"SCL source written to \\u0027C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Temp\\\\FC_GreenAcceptance_20260807.scl\\u0027. To import in TIA Portal: project tree \\u2192 \\u0027External source files\\u0027 \\u2192 \\u0027Add new external file\\u0027 \\u2192 select this .scl \\u2192 right-click the source \\u2192 \\u0027Generate blocks from source\\u0027. (Or call ImportPlcExternalSource then GenerateBlocksFromExternalSource if connected.)\",\"meta\":{\"timestamp\":\"2026-08-07T01:14:34.5788969-04:00\",\"success\":true,\"path\":\"C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Temp\\\\FC_GreenAcceptance_20260807.scl\",\"blockName\":\"FC_GreenAcceptance_20260807\",\"bytes\":185}}"
+                    },
+    "importSource":  {
+                         "success":  true,
+                         "tool":  "ImportPlcExternalSource",
+                         "dangerous":  false,
+                         "json":  {
+                                      "message":  "PLC external source imported",
+                                      "meta":  {
+                                                   "timestamp":  "2026-08-07T01:14:34.6685378-04:00",
+                                                   "success":  true
+                                               }
+                                  },
+                         "text":  "{\"message\":\"PLC external source imported\",\"meta\":{\"timestamp\":\"2026-08-07T01:14:34.6685378-04:00\",\"success\":true}}"
+                     },
+    "generateBlock":  {
+                          "success":  true,
+                          "tool":  "GenerateBlocksFromExternalSource",
+                          "dangerous":  false,
+                          "json":  {
+                                       "message":  "Blocks generated from external source \u0027FC_GreenAcceptance_20260807.scl\u0027",
+                                       "meta":  {
+                                                    "timestamp":  "2026-08-07T01:14:44.1831355-04:00",
+                                                    "success":  true
+                                                }
+                                   },
+                          "text":  "{\"message\":\"Blocks generated from external source \\u0027FC_GreenAcceptance_20260807.scl\\u0027\",\"meta\":{\"timestamp\":\"2026-08-07T01:14:44.1831355-04:00\",\"success\":true}}"
+                      },
+    "compileAfter":  {
+                         "success":  true,
+                         "tool":  "CompileAndDiagnosePlc",
+                         "dangerous":  false,
+                         "json":  {
+                                      "state":  "Success",
+                                      "errorCount":  0,
+                                      "warningCount":  0,
+                                      "errors":  [
+
+                                                 ],
+                                      "warnings":  [
+
+                                                   ],
+                                      "info":  [
+                                                   "State=Success; Description=Block was successfully compiled.; Path=FC_GreenAcceptance_20260807 (FC1); DateTime=2026/8/7 5:14:46"
+                                               ],
+                                      "rawMessages":  [
+                                                          "State=Success; Path=PLC_1; DateTime=2026/8/7 5:14:46",
+                                                          "State=Success; Path=Program blocks; DateTime=2026/8/7 5:14:46",
+                                                          "State=Success; Description=Block was successfully compiled.; Path=FC_GreenAcceptance_20260807 (FC1); DateTime=2026/8/7 5:14:46",
+                                                          "State=Success; Description=Compiling finished (errors: 0; warnings: 0); DateTime=2026/8/7 5:14:47"
+                                                      ],
+                                      "message":  "Software \u0027PLC_1\u0027 compiled. State=Success Errors=0 Warnings=0",
+                                      "meta":  {
+                                                   "timestamp":  "2026-08-07T01:14:48.3966728-04:00",
+                                                   "success":  true,
+                                                   "errorDetailCount":  0,
+                                                   "warningDetailCount":  0
+                                               }
+                                  },
+                         "text":  "{\"state\":\"Success\",\"errorCount\":0,\"warningCount\":0,\"errors\":[],\"warnings\":[],\"info\":[\"State=Success; Description=Block was successfully compiled.; Path=FC_GreenAcceptance_20260807 (FC1); DateTime=2026/8/7 5:14:46\"],\"rawMessages\":[\"State=Success; Path=PLC_1; DateTime=2026/8/7 5:14:46\",\"State=Success; Path=Program blocks; DateTime=2026/8/7 5:14:46\",\"State=Success; Description=Block was successfully compiled.; Path=FC_GreenAcceptance_20260807 (FC1); DateTime=2026/8/7 5:14:46\",\"State=Success; Description=Compiling finished (errors: 0; warnings: 0); DateTime=2026/8/7 5:14:47\"],\"message\":\"Software \\u0027PLC_1\\u0027 compiled. State=Success Errors=0 Warnings=0\",\"meta\":{\"timestamp\":\"2026-08-07T01:14:48.3966728-04:00\",\"success\":true,\"errorDetailCount\":0,\"warningDetailCount\":0}}"
+                     },
+    "softwareTree":  {
+                         "success":  true,
+                         "connected":  true,
+                         "project":  "Demo_Scaffold_F",
+                         "tree":  "```\nPLC_1 [PLC Software]\r\n├── Program blocks\r\n│   ├── Main [OB1, LAD]\r\n│   ├── FB_MotorBatchCtrl [FB1, SCL]\r\n│   ├── Stress_S7DCL_TwoMotor [FB2, LAD]\r\n│   └── FC_GreenAcceptance_20260807 [FC1, SCL]\r\n└── PLC data types\r\n\n```",
+                         "blocks":  [
+                                        {
+                                            "name":  "Main",
+                                            "type":  "OB1",
+                                            "lang":  "LAD",
+                                            "path":  "Program blocks/Main"
+                                        },
+                                        {
+                                            "name":  "FB_MotorBatchCtrl",
+                                            "type":  "FB1",
+                                            "lang":  "SCL",
+                                            "path":  "Program blocks/FB_MotorBatchCtrl"
+                                        },
+                                        {
+                                            "name":  "Stress_S7DCL_TwoMotor",
+                                            "type":  "FB2",
+                                            "lang":  "LAD",
+                                            "path":  "Program blocks/Stress_S7DCL_TwoMotor"
+                                        },
+                                        {
+                                            "name":  "FC_GreenAcceptance_20260807",
+                                            "type":  "FC1",
+                                            "lang":  "SCL",
+                                            "path":  "Program blocks/FC_GreenAcceptance_20260807"
+                                        }
+                                    ]
+                     }
+}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老殷工控PLC - 工程登录</title>
+    <link rel="stylesheet" href="web/css/tokens.css">
+    <link rel="stylesheet" href="web/css/components.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+<body class="login-console tia-portal-shell">
+    <main class="container">
+        <section class="signal-grid" aria-label="老殷工控PLC 工程控制台">
+            <div class="brand-panel">
+                <div class="system-tag">PLC ENGINEERING WORKSPACE</div>
+                <h1>老殷工控PLC</h1>
+                <p class="brand-copy">面向 S7-200 SMART / S7-1200 / S7-1500 的项目上下文、AI 编程、校验与博途导入工作台。</p>
+
+                <div class="console-lines" aria-hidden="true">
+                    <div><span>CPU</span><strong>S7 READY</strong></div>
+                    <div><span>LANG</span><strong>LAD / FBD / SCL / STL</strong></div>
+                    <div><span>TIA</span><strong>OPENNESS CHANNEL</strong></div>
+                    <div><span>ENGINE</span><strong>XML + XSD VALIDATION</strong></div>
+                </div>
+
+                <div class="signal-strip" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <div class="auth-panel">
+                <div class="auth-container">
+                    <div class="auth-header">
+                        <span class="panel-kicker">ENGINEERING SESSION</span>
+                        <h2>进入工程智能体</h2>
+                        <p>登录后进入项目上下文、PLC 编程助手与本机环境检查。</p>
+                    </div>
+
+                    <div class="auth-tabs">
+                        <button class="tab-btn active" data-tab="login" type="button">登录</button>
+                        <button class="tab-btn" data-tab="register" type="button">注册</button>
+                    </div>
+
+                    <div class="auth-form" id="loginForm">
+                        <h3>用户登录</h3>
+                        <form id="loginFormElement">
+                            <div class="form-group">
+                                <label for="loginUsername">用户名</label>
+                                <input type="text" id="loginUsername" name="username" autocomplete="username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="loginPassword">密码</label>
+                                <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                <span id="loginBtnText">进入工作台</span>
+                                <span id="loginLoader" class="loader hidden">登录中...</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="auth-form hidden" id="registerForm">
+                        <h3>用户注册</h3>
+                        <form id="registerFormElement">
+                            <div class="form-group">
+                                <label for="registerUsername">用户名</label>
+                                <input type="text" id="registerUsername" name="username" autocomplete="username" required minlength="3">
+                                <small>用户名至少 3 个字符</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="registerPassword">密码</label>
+                                <input type="password" id="registerPassword" name="password" autocomplete="new-password" required minlength="6">
+                                <small>密码至少 6 个字符</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword">确认密码</label>
+                                <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">邮箱（可选）</label>
+                                <input type="email" id="email" name="email" autocomplete="email">
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                <span id="registerBtnText">创建账号</span>
+                                <span id="registerLoader" class="loader hidden">注册中...</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="message" id="message"></div>
+                    <div id="licenseNotice" class="message info" style="display:block;margin-top:12px">正在检查本机授权…</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="site-footer">老殷工控PLC · 未经授权 禁止商用</div>
+
+    <script src="login.js"></script>
+</body>
+</html>

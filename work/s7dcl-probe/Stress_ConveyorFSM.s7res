@@ -1,0 +1,29 @@
+﻿MultiLingualTexts:
+  - id: MLC_3Q8
+    zh-CN: 启动指令
+  - id: MLC_4hr
+    zh-CN: 停止指令
+  - id: MLC_3qY
+    zh-CN: 故障复位
+  - id: MLC_35X
+    zh-CN: 三工位到位传感器
+  - id: MLC_48j
+    zh-CN: 三工位电机反馈
+  - id: MLC_3cF
+    zh-CN: 三工位电机输出
+  - id: MLC_3KA
+    zh-CN: 状态机当前状态
+  - id: MLC_4jx
+    zh-CN: 故障码 0=无
+  - id: MLC_393
+    zh-CN: 完成循环计数
+  - id: MLC_4Ea
+    zh-CN: 各工位节拍定时器
+  - id: MLC_WS
+    zh-CN: 反馈超时检测
+  - id: MLC_4Lk
+    zh-CN: 故障锁存
+  - id: MLC_MT
+    zh-CN: 当前处理工位
+  - id: MLC_4US
+    zh-CN: 启动上升沿检测

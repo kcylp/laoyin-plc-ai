@@ -1,0 +1,13 @@
+﻿MultiLingualTexts:
+  - id: MLC_3zK
+    zh-CN: 计数脉冲
+  - id: MLC_dC
+    zh-CN: 复位
+  - id: MLC_3LX
+    zh-CN: 设定值
+  - id: MLC_3qR
+    zh-CN: 到达设定值
+  - id: MLC_3bd
+    zh-CN: 当前计数值
+  - id: MLC_4jN
+    zh-CN: CTU 计数器实例（必须用具体类型，不能用 IEC_COUNTER）

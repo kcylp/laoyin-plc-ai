@@ -1,0 +1,28 @@
+﻿{
+  "name": "laoyin-plc-ai",
+  "version": "2.0.0",
+  "description": "老殷工控PLC - 专业PLC编程AI助手 (S7-200Smart/1200/1500)",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test test/*.test.js",
+    "e2e": "node work/e2e-ux.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.7",
+    "imap": "^0.8.19",
+    "mailparser": "^3.6.5"
+  },
+  "keywords": ["PLC", "AI", "assistant", "SCL", "LAD", "FBD"],
+  "author": "老殷工控",
+  "license": "MIT"
+}

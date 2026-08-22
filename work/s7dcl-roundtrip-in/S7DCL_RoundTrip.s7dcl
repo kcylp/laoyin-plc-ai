@@ -1,0 +1,69 @@
+﻿{
+    S7_IECCheck := "TRUE";
+    S7_Optimized := "TRUE";
+    S7_PreferredLanguage := "LAD";
+    S7_Version := "0.1"
+}
+FUNCTION_BLOCK "S7DCL_RoundTrip"
+    VAR_INPUT
+        StartCmd : Bool;
+        StopCmd : Bool;
+        CountPulse : Bool;
+    END_VAR
+    VAR_OUTPUT
+        MotorRun : Bool;
+        TimerDone : Bool;
+        BatchDone : Bool;
+    END_VAR
+    VAR
+        RunTimer : TON_TIME;
+        BatchCnt : CTU_INT;
+    END_VAR
+
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "latch with interlock"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #StartCmd )
+            wire#w1
+            I_Contact( #StopCmd )
+            Coil( #MotorRun )
+        END_RUNG
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+        END_RUNG wire#w1
+    END_NETWORK
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "run timer 3s"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+            { S7_Templates := "time_type := Time" }
+            #RunTimer.TON(
+                pt := T#3s,
+                et =>
+            )
+            Coil( #TimerDone )
+        END_RUNG
+    END_NETWORK
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "batch counter reaches 10"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #CountPulse )
+            { S7_Templates := "value_type := Int" }
+            #BatchCnt.CTU(
+                r := #StopCmd,
+                pv := Int#10,
+                cv =>
+            )
+            Coil( #BatchDone )
+        END_RUNG
+    END_NETWORK
+END_FUNCTION_BLOCK

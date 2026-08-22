@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老殷工控PLC · 工程智能体</title>
+    <link rel="stylesheet" href="web/css/tokens.css">
+    <link rel="stylesheet" href="web/css/shell.css">
+    <link rel="stylesheet" href="web/css/chat.css">
+    <link rel="stylesheet" href="web/css/panels.css">
+    <link rel="stylesheet" href="web/css/modals.css">
+    <link rel="stylesheet" href="web/css/components.css">
+</head>
+<body class="tia-portal-shell">
+    <div class="tia-shell">
+        <header class="tia-titlebar">
+            <div class="tb-brand">老殷工控PLC <span class="tb-sub">工程智能体</span></div>
+            <div class="tb-project">项目：<span id="tbProject">—</span><span class="tia-badge is-info" id="tbSeries">S7-1200</span></div>
+            <div class="tb-user">
+                <span id="tbUser">—</span>
+                <button class="tia-btn is-ghost is-sm" id="btnSettings" type="button">设置</button>
+                <button class="tia-btn is-ghost is-sm" id="btnLogout" type="button">退出</button>
+            </div>
+        </header>
+
+        <nav class="tia-ribbon" aria-label="工程工具栏">
+            <div class="tia-ribbon-group">
+                <span class="rg-label">系列</span>
+                <div class="tia-tabs" id="seriesTabs">
+                    <button class="tia-tab is-disabled" data-series="s200smart" type="button">S7-200 SMART<span class="tab-todo">待开发</span></button>
+                    <button class="tia-tab is-active" data-series="s1200" type="button">S7-1200</button>
+                    <button class="tia-tab" data-series="s1500" type="button">S7-1500</button>
+                </div>
+            </div>
+            <div class="tia-ribbon-group">
+                <span class="rg-label">语言</span>
+                <div class="tia-tabs" id="langTabs">
+                    <button class="tia-tab" data-lang="lad" type="button">LAD</button>
+                    <button class="tia-tab" data-lang="fbd" type="button">FBD</button>
+                    <button class="tia-tab is-active" data-lang="scl" type="button">SCL</button>
+                    <button class="tia-tab" data-lang="stl" type="button">STL</button>
+                    <button class="tia-tab is-disabled" data-lang="graph" type="button">GRAPH<span class="tab-todo">待开发</span></button>
+                </div>
+            </div>
+            <div class="tia-ribbon-group">
+                <label class="rg-label" for="modelSelect">模型</label>
+                <select id="modelSelect" class="tia-select"><option value="">加载中...</option></select>
+                <span id="modelTestStatus"
+                      class="tia-model-test-status"
+                      aria-live="polite"
+                      title="当前模型测试状态">
+                    <i class="tia-model-test-led is-idle"></i>
+                    <span>未测试</span>
+                </span>
+            </div>
+            <div class="tia-ribbon-group is-right">
+                <button class="tia-btn is-ghost is-sm" id="btnTiaOnline" type="button">
+                    在线操作 <i id="tiaOnlineLed" class="tia-led is-idle"></i>
+                </button>
+                <button class="tia-btn is-ghost is-sm" id="btnClear" type="button">清空会话</button>
+                <a class="tia-btn is-ghost is-sm" href="env-check.html">环境自检</a>
+            </div>
+        </nav>
+
+        <div class="tia-body">
+            <div class="tia-tree-col">
+                <div class="rt-wrap hidden" id="realTreeWrap">
+                    <div class="rt-head"><span>博途工程（实时）</span><button class="tia-btn is-ghost is-sm" id="rtRefresh" type="button">刷新</button></div>
+                    <div class="rt-blocks" id="rtBlocks"></div>
+                    <div class="rt-desc hidden" id="rtDesc"></div>
+                    <details class="rt-raw">
+                        <summary>原始树</summary>
+                        <pre class="rt-tree" id="realTree"></pre>
+                    </details>
+                </div>
+                <aside class="tia-tree" id="projectTree" aria-label="项目树"></aside>
+            </div>
+            <main class="tia-canvas" aria-label="工程会话">
+                <div class="tia-messages" id="messages"></div>
+                <div class="tia-composer">
+                    <textarea id="userInput" rows="3" placeholder="输入编程需求，例如：电机起保停，带急停与运行指示。勾选「整工程」= 从零建完整工程"></textarea>
+                    <div class="composer-side">
+                        <label class="composer-scaffold" title="整工程模式：自然语言 → AI 生成工程 spec → 离线校验 → 一键建完整工程（新项目/硬件/变量表/编译）"><input type="checkbox" id="scaffoldMode"> 整工程</label>
+                        <button class="tia-btn is-primary" id="sendButton" type="button"><span id="sendText">发送</span><span id="sendLoader" class="hidden">发送中</span></button>
+                    </div>
+                </div>
+            </main>
+            <aside class="tia-inspector" id="inspector" aria-label="状态检查器"></aside>
+        </div>
+
+        <section class="tia-output collapsed" id="outputPanel" aria-live="polite">
+            <button class="output-head" id="outputToggle" type="button" aria-expanded="false">
+                <span id="outputTitle">输出 (0)</span>
+                <span class="spacer"></span>
+                <span id="outputToggleText">展开</span>
+            </button>
+            <div class="output-list" id="outputList"></div>
+            <div class="output-actions"><button class="tia-btn is-ghost is-sm" id="outputClear" type="button">清空输出</button></div>
+        </section>
+        <footer class="tia-statusbar">
+            <span class="tia-status-item"><i class="tia-led is-ok" id="stLed"></i><span id="stState">就绪</span></span>
+            <span class="tia-status-item">系列 <b id="stSeries">S7-1200</b></span>
+            <span class="tia-status-item">语言 <b id="stLang">SCL</b></span>
+            <span class="tia-status-item">模型 <b id="stModel">—</b></span>
+            <span class="tia-status-item">XSD <b id="stXsd">—</b></span>
+            <span class="tia-status-item is-right">耗时 <b id="stElapsed">0.0s</b></span>
+        </footer>
+    </div>
+
+
+    <div class="tia-fullpanel hidden" id="onlinePanel" aria-label="在线操作面板">
+        <div class="fullpanel-head">
+            <b>博途在线工具</b>
+            <span class="drawer-sub" id="odSub">—</span>
+            <button class="tia-modal-x" id="odClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="fullpanel-body">
+            <section class="online-section" id="hmiQuickFlow">
+                <div class="od-row"><label class="rg-label">HMI 快捷流程</label><span class="spacer"></span></div>
+                <div class="od-hint">建议顺序：HMI 标签预检 → HMI 标签绑定 → HMI 画面设计 → HMI 画面导出。点击下方快捷项会填入工具调用区。</div>
+                <div class="online-chip-row">
+                    <button class="tia-btn is-ghost is-sm" type="button" data-hmi-tool="HMI 标签预检">标签预检</button>
+                    <button class="tia-btn is-ghost is-sm" type="button" data-hmi-tool="HMI 标签绑定">标签绑定</button>
+                    <button class="tia-btn is-ghost is-sm" type="button" data-hmi-tool="HMI 画面设计">画面设计</button>
+                    <button class="tia-btn is-ghost is-sm" type="button" data-hmi-tool="HMI 画面导出">画面导出</button>
+                </div>
+            </section>
+            <section class="online-section" id="scaffoldQuickPanel">
+                <div class="od-row"><label class="rg-label">快速建工程</label><span class="spacer"></span></div>
+                <div class="online-grid">
+                    <select class="tia-input" id="scaffoldPlcFamily" aria-label="PLC系列"><option value="S7-1500">S7-1500</option><option value="S7-1200">S7-1200</option></select>
+                    <input class="tia-input" id="scaffoldProjectName" placeholder="工程名,如 StartStop_Demo" autocomplete="off" />
+                </div>
+                <textarea class="tia-input od-args" id="scaffoldRequirement" rows="3" placeholder="需求,如 一台电机启停,带 HMI 启停按钮、状态灯和故障复位"></textarea>
+                <div class="od-row"><span class="spacer"></span><button class="tia-btn is-ghost is-sm" id="scaffoldPreview" type="button">预览 spec</button><button class="tia-btn is-primary is-sm" id="scaffoldRun" type="button">执行建工程</button></div>
+                <div class="online-preview" id="scaffoldPreviewBox">等待预览。</div>
+            </section>
+            <section class="online-section" id="hardwarePanel">
+                <div class="od-row"><label class="rg-label">硬件管理</label><input class="tia-input od-tool" id="hardwareKeyword" placeholder="MLFB/设备关键字,如 CPU 1511" autocomplete="off" /><button class="tia-btn is-ghost is-sm" id="hardwareSearchBtn" type="button">搜索</button></div>
+                <div class="online-result-list" id="hardwareResults"></div>
+            </section>
+            <section class="online-section fullpanel-tools fullpanel-runner" id="odToolsSection">
+                <div class="od-row">
+                    <label class="rg-label">工具调用</label>
+                    <input class="tia-input od-tool" id="odToolName" placeholder="选择功能,如 编译诊断" list="odToolList" autocomplete="off" />
+                    <datalist id="odToolList"></datalist>
+                    <button class="tia-btn is-ghost is-sm" id="odToolListBtn" type="button" title="查看全部 201 个工具">全部工具</button>
+                </div>
+                <div class="od-hint">博途在线引擎：建项目 / 编译诊断 / 下载到 PLC / 在线读值 / HMI 等全部能力。结果统一进入底部输出面板。</div>
+                <textarea class="tia-input od-args" id="odArgs" rows="5" placeholder='参数(JSON),多数功能留空即可,如 {"projectPath":"D:\\demo.ap21"}'></textarea>
+                <div class="od-row"><span class="spacer"></span><button class="tia-btn is-ghost is-sm" id="odConnect" type="button">连接/重连</button><button class="tia-btn is-primary is-sm" id="odCall" type="button">执行工具</button></div>
+            </section>
+            <section class="online-section" id="tagTablePanel">
+                <div class="od-row"><label class="rg-label">变量表</label><span class="spacer"></span><button class="tia-btn is-ghost is-sm" id="tagTablesRefresh" type="button">刷新</button></div>
+                <div class="online-result-list" id="tagTablesList"></div>
+            </section>
+            <section class="online-section danger-zone" id="odDownloadSection">
+                <div class="od-row"><label class="rg-label">下载到 PLC</label><span class="spacer"></span><button class="tia-btn is-danger is-sm" id="odDownload" type="button">下载到 PLC</button></div>
+            </section>
+            <section class="online-section" id="odLiveReadSection">
+                <div class="od-row">
+                    <label class="rg-label">在线读值</label>
+                    <input class="tia-input od-tool" id="odMonitorAddr" placeholder="PLC 地址,如 192.168.0.32" autocomplete="off" />
+                    <input class="tia-input od-tool" id="odMonitorItems" placeholder="变量,如 M0.0,DB1.DBD0:REAL" autocomplete="off" />
+                    <button class="tia-btn is-ghost is-sm" id="odMonitor" type="button">读值</button>
+                </div>
+            </section>
+        </div>
+    </div>
+    <div class="tia-modal-mask hidden" id="confirmModal" data-level="info">
+        <div class="tia-modal confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <div class="tia-modal-head"><span id="confirmTitle">确认</span><button class="tia-modal-x" id="confirmClose" type="button" aria-label="关闭">×</button></div>
+            <div class="tia-modal-body">
+                <table class="tia-table is-kv confirm-facts" id="confirmFacts"></table>
+                <div class="tia-alert hidden" id="confirmWarning"></div>
+                <ul class="confirm-bullets hidden" id="confirmBullets"></ul>
+                <label class="tia-check hidden" id="confirmRequiredWrap"><input type="checkbox" id="confirmRequiredCheck"> <span id="confirmRequiredText">我已确认</span></label>
+                <label class="tia-check hidden" id="confirmOptionalWrap"><input type="checkbox" id="confirmOptionalCheck"> <span id="confirmOptionalText">选项</span></label>
+            </div>
+            <div class="tia-modal-foot">
+                <span class="spacer"></span><button class="tia-btn is-ghost" id="confirmCancel" type="button">取消</button><button class="tia-btn is-primary" id="confirmOk" type="button">确认</button>
+            </div>
+        </div>
+    </div>
+    <div class="tia-modal-mask hidden" id="toolListModal">
+        <div class="tia-modal" role="dialog" aria-modal="true" aria-labelledby="tlTitle">
+            <div class="tia-modal-head"><span id="tlTitle">博途在线引擎 — 全部工具</span><button class="tia-modal-x" id="toolListClose" type="button" aria-label="关闭">×</button></div>
+            <div class="tia-modal-body">
+                <input class="tia-input" id="toolListSearch" placeholder="搜索工具名或中文标签…" autocomplete="off" />
+                <div id="toolListItems" class="tool-list-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tia-modal-mask hidden" id="histModal">
+        <div class="tia-modal" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+            <div class="tia-modal-head"><span id="histTitle">写入历史 — 回滚</span><button class="tia-modal-x" id="histClose" type="button" aria-label="关闭">×</button></div>
+            <div class="tia-modal-body">
+                <div class="tia-alert is-info">每次「写入博途」成功都会留一份快照。回滚会重新写入所选版本，走同样的确认流程。</div>
+                <div id="histList" class="hist-list"></div>
+            </div>
+            <div class="tia-modal-foot">
+                <span class="spacer"></span><button class="tia-btn is-ghost" id="histClose2" type="button">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="plc-language.js"></script>
+    <script src="tia-confirmation.js"></script>
+    <script src="tia-import-state.js"></script>
+    <script type="module" src="web/app.js"></script>
+</body>
+</html>

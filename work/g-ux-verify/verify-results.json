@@ -1,0 +1,159 @@
+{
+  "results": {
+    "01_shell_loaded": {
+      "ok": true,
+      "detail": ""
+    },
+    "no_horizontal_scroll_1280x800": {
+      "ok": true,
+      "detail": "{\"width\":1280,\"body\":1280,\"doc\":1280,\"ok\":true}"
+    },
+    "global_onclick_exports": {
+      "ok": true,
+      "detail": ""
+    },
+    "02_confirm_info": {
+      "ok": true,
+      "detail": ""
+    },
+    "03_output_write_result": {
+      "ok": true,
+      "detail": "写入结果✅ 已写入博途：UX_Write_Block\n本块编译：错误 0，警告 0\n去博途里打开这个块就能看到程序。{\n  \"success\": true,\n  \"stage\": \"done\",\n  \"imported\": [\n    \"UX_Write_Block\"\n  ],\n  \"blockName\": \"UX_Write_Block\",\n  \"errorCount\": 0,\n  \"warningCount\": 0,\n  \"messages\": [\n    \"Mock compile OK\",\n    \"Confirmed=true\"\n  ]\n}"
+    },
+    "write_result_inspector": {
+      "ok": true,
+      "detail": "上下文返回系统状态\n            写入结果\n                块UX_Write_Block\n                阶段done\n                错误0\n                警告0\n                \n                消息Mock compile OK消息Confirmed=true\n            "
+    },
+    "tree_auto_refresh": {
+      "ok": true,
+      "detail": "程序块 · 点击解读Stress_StarDeltaUX_Write_Block"
+    },
+    "05_block_logic_inspector": {
+      "ok": true,
+      "detail": ""
+    },
+    "07_rollback_warn_confirm": {
+      "ok": true,
+      "detail": ""
+    },
+    "08_online_fullpanel": {
+      "ok": true,
+      "detail": ""
+    },
+    "g_layout_order": {
+      "ok": true,
+      "detail": ""
+    },
+    "g1_scaffold_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "g2_hmi_readonly_call": {
+      "ok": true,
+      "detail": ""
+    },
+    "g3_hardware_search_readonly": {
+      "ok": true,
+      "detail": ""
+    },
+    "g4_tag_tables_readonly": {
+      "ok": true,
+      "detail": ""
+    },
+    "09_tool_result_output": {
+      "ok": true,
+      "detail": ""
+    },
+    "tool_ready_for_next_search": {
+      "ok": true,
+      "detail": ""
+    },
+    "no_horizontal_scroll_1100x700": {
+      "ok": true,
+      "detail": "{\"width\":1100,\"body\":1100,\"doc\":1100,\"ok\":true}"
+    },
+    "10_small_tool_again": {
+      "ok": true,
+      "detail": ""
+    },
+    "11_danger_locked": {
+      "ok": true,
+      "detail": ""
+    },
+    "12_danger_unlocked": {
+      "ok": true,
+      "detail": ""
+    },
+    "g5_s7dcl_readonly_export": {
+      "ok": true,
+      "detail": ""
+    },
+    "screenshot_count_17": {
+      "ok": true,
+      "detail": "01-shell.png, 02-confirm-info.png, 03-output.png, 04-tree-auto.png, 05-describe.png, 06-history.png, 07-confirm-warn.png, 08-online-full.png, 09-tool-result.png, 10-tool-again.png, 11-danger-locked.png, 12-danger-unlocked.png, 13-g-layout-top.png, 14-g-scaffold-preview.png, 15-g-hardware-results.png, 16-g-tag-tables-bottom.png, 17-g-s7dcl-export.png"
+    },
+    "import_endpoint_called_after_confirm": {
+      "ok": true,
+      "detail": "imports=2"
+    },
+    "mock_call_count": {
+      "ok": true,
+      "detail": "calls=3"
+    },
+    "console_errors": {
+      "ok": true,
+      "detail": ""
+    }
+  },
+  "requests": [
+    "GET /index.html",
+    "GET /web/css/tokens.css",
+    "GET /web/css/shell.css",
+    "GET /web/css/chat.css",
+    "GET /web/css/panels.css",
+    "GET /web/css/modals.css",
+    "GET /web/css/components.css",
+    "GET /plc-language.js",
+    "GET /tia-confirmation.js",
+    "GET /tia-import-state.js",
+    "GET /web/app.js",
+    "GET /web/api.js",
+    "GET /web/chat.js",
+    "GET /web/code-blocks.js",
+    "GET /web/history.js",
+    "GET /web/inspector.js",
+    "GET /web/online.js",
+    "GET /web/statusbar.js",
+    "GET /web/tree.js",
+    "GET /web/tia-actions.js",
+    "GET /web/confirm-dialog.js",
+    "GET /web/output-panel.js",
+    "GET /web/scaffold-panel.js",
+    "GET /web/hardware-panel.js",
+    "GET /api/verify",
+    "GET /api/tia/mcp/software-tree",
+    "GET /api/tia/mcp/status",
+    "GET /api/models",
+    "GET /api/workbench/status",
+    "GET /favicon.ico",
+    "POST /api/chat",
+    "POST /api/tia/preflight",
+    "POST /api/tia/import",
+    "GET /api/tia/mcp/software-tree",
+    "POST /api/tia/mcp/describe-block",
+    "GET /api/tia/history",
+    "GET /api/tia/history/1",
+    "POST /api/tia/preflight",
+    "POST /api/tia/import",
+    "GET /api/tia/mcp/software-tree",
+    "GET /api/tia/mcp/status",
+    "POST /api/tia/mcp/scaffold",
+    "POST /api/tia/mcp/call",
+    "POST /api/tia/mcp/search-hardware",
+    "POST /api/tia/mcp/tag-tables",
+    "POST /api/tia/mcp/call",
+    "POST /api/tia/mcp/call",
+    "POST /api/tia/mcp/describe-block",
+    "POST /api/tia/mcp/export-s7dcl"
+  ]
+}

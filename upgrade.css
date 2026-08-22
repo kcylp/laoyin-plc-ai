@@ -1,0 +1,20 @@
+/* TIA Upgrade Console */
+@import url("tia.css");
+
+* { box-sizing: border-box; }
+body.upgrade-console { min-width: 0; overflow: auto; color: var(--tia-text); background: var(--tia-panel); font-family: var(--tia-font); }
+.container { width: min(980px, 100%); margin: 0 auto; padding: var(--tia-pad-lg); }
+.upgrade-container { overflow: hidden; border: 1px solid var(--tia-line); border-radius: var(--tia-radius-lg); background: var(--tia-canvas); }
+.header { padding: var(--tia-pad-lg) 16px; color: var(--tia-titlebar-text); background: var(--tia-titlebar); }
+.header h1 { margin: 0; color: var(--tia-titlebar-text); font-size: 16px; font-weight: 700; }.header p { margin: 3px 0 0; color: var(--tia-titlebar-muted); font-size: var(--tia-fs-sm); font-weight: 600; }
+.current-status, .upgrade-info, .action-buttons { padding: var(--tia-pad-lg); background: var(--tia-panel); border-bottom: 1px solid var(--tia-line); }
+.status-card, .info-card, .contact-info { padding: var(--tia-pad-lg); border: 1px solid var(--tia-line); background: var(--tia-canvas); }
+.status-card h3, .info-card h3 { margin: 0 0 var(--tia-pad); font-size: 13px; }.status-info, .upgrade-description, .label, .upgrade-steps li { color: var(--tia-text-2); font-size: var(--tia-fs-sm); }
+.plans-container { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--tia-line); }
+.plan-card { position: relative; padding: 20px; border-right: 1px solid var(--tia-line); background: var(--tia-canvas); }.plan-card:last-child { border-right: 0; }.plan-card.premium { background: var(--tia-panel); }
+.plan-card h3 { margin: 0 0 var(--tia-pad); font-size: 14px; }.price { margin-bottom: var(--tia-pad); color: var(--tia-accent-2); font-size: 18px; font-weight: 700; }.features { margin: 0 0 var(--tia-pad); padding-left: 18px; color: var(--tia-text-2); font-size: var(--tia-fs-sm); }.features li { padding: 4px 0; border-bottom: 1px solid var(--tia-line-soft); }
+.recommended, .plan-status { display: inline-flex; padding: 2px 6px; border: 1px solid var(--tia-accent-line); border-radius: var(--tia-radius); color: var(--tia-accent-2); background: var(--tia-accent-soft); font-size: var(--tia-fs-xs); }.recommended { position: absolute; top: var(--tia-pad); right: var(--tia-pad); }
+.contact-info { margin: var(--tia-pad) 0; text-align: center; }.wechat-info { display: flex; justify-content: center; align-items: center; gap: var(--tia-pad); }.wechat-id { color: var(--tia-accent-2); font-family: var(--tia-mono); font-weight: 700; }.upgrade-steps { margin-top: var(--tia-pad); }.upgrade-steps h4 { margin: 0 0 4px; font-size: 13px; }.upgrade-steps ol { margin: 0; padding-left: 18px; }
+.action-buttons { display: flex; gap: var(--tia-pad); justify-content: flex-end; border-bottom: 0; }.contact-btn, .back-btn, .copy-btn { min-height: 28px; padding: 0 10px; border: 1px solid var(--tia-line); border-radius: var(--tia-radius); color: var(--tia-text); background: var(--tia-canvas); cursor: pointer; font: inherit; }.contact-btn { color: var(--tia-text-inv); border-color: var(--tia-accent); background: var(--tia-accent); }.contact-btn:hover { background: var(--tia-accent-2); }.back-btn:hover, .copy-btn:hover { border-color: var(--tia-accent-line); background: var(--tia-accent-soft); }
+.message { padding: var(--tia-pad); font-size: var(--tia-fs-sm); }.message.success { color: var(--tia-accent-2); background: var(--tia-accent-soft); }.message.info { color: var(--tia-text-2); background: var(--tia-panel); }
+@media (max-width: 640px) { .container { padding: 0; }.upgrade-container { border-radius: 0; }.plans-container { grid-template-columns: 1fr; }.plan-card { border-right: 0; border-bottom: 1px solid var(--tia-line); }.action-buttons, .wechat-info { align-items: stretch; flex-direction: column; } }

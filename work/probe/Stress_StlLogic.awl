@@ -1,0 +1,59 @@
+FUNCTION_BLOCK "Stress_StlLogic"
+TITLE = complex stl logic
+VERSION : 0.1
+
+VAR_INPUT
+  Start : Bool;
+  Stop : Bool;
+  Mode : Bool;
+  Interlock : Bool;
+END_VAR
+VAR_OUTPUT
+  MainOut : Bool;
+  AuxOut : Bool;
+  Alarm : Bool;
+END_VAR
+VAR
+  Latch : Bool;
+END_VAR
+
+BEGIN
+NETWORK
+TITLE = latch with interlock
+
+      A(    ;
+      A     #Start;
+      O     #Latch;
+      )     ;
+      AN    #Stop;
+      A     #Interlock;
+      =     #Latch;
+
+NETWORK
+TITLE = main output by mode
+
+      A     #Latch;
+      A     #Mode;
+      =     #MainOut;
+
+NETWORK
+TITLE = aux output inverse mode
+
+      A     #Latch;
+      AN    #Mode;
+      =     #AuxOut;
+
+NETWORK
+TITLE = alarm on interlock loss while latched
+
+      A     #Latch;
+      AN    #Interlock;
+      S     #Alarm;
+
+NETWORK
+TITLE = alarm reset
+
+      A     #Stop;
+      R     #Alarm;
+
+END_FUNCTION_BLOCK

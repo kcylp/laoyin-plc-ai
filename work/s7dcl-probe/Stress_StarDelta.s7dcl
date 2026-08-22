@@ -1,0 +1,77 @@
+﻿{
+    S7_IECCheck := "TRUE";
+    S7_Optimized := "TRUE";
+    S7_PreferredLanguage := "LAD";
+    S7_Version := "0.1"
+}
+FUNCTION_BLOCK "Stress_StarDelta"
+    VAR_INPUT
+        StartCmd : Bool;
+        StopCmd : Bool;
+    END_VAR
+    VAR_OUTPUT
+        StarContactor : Bool;
+        DeltaContactor : Bool;
+    END_VAR
+    VAR
+        MotorRun : Bool;
+        TimerDone : Bool;
+        { S7_Setpoint := "False" }
+        StartTimer : TON_TIME;
+    END_VAR
+
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "MLC_z2"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #StartCmd )
+            wire#w1
+            I_Contact( #StopCmd )
+            Coil( #MotorRun )
+        END_RUNG
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+        END_RUNG wire#w1
+    END_NETWORK
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "MLC_an"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+            { S7_Templates := "time_type := Time" }
+            #StartTimer.TON(
+                pt := T#5s,
+                et =>  
+            )
+            Coil( #TimerDone )
+        END_RUNG
+    END_NETWORK
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "MLC_3pp"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+            I_Contact( #TimerDone )
+            I_Contact( #DeltaContactor )
+            Coil( #StarContactor )
+        END_RUNG
+    END_NETWORK
+    {
+        S7_Language := "LAD";
+        S7_NetworkTitle := "MLC_3b8"
+    }
+    NETWORK
+        RUNG wire#powerrail
+            Contact( #MotorRun )
+            Contact( #TimerDone )
+            I_Contact( #StarContactor )
+            Coil( #DeltaContactor )
+        END_RUNG
+    END_NETWORK
+END_FUNCTION_BLOCK

@@ -1,0 +1,271 @@
+.tia-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 18px;
+    padding: 0 6px;
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    color: var(--tia-text-2);
+    background: var(--tia-panel);
+    font-size: var(--tia-fs-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.tia-badge.is-info {
+    color: var(--tia-accent-2);
+    border-color: var(--tia-accent-line);
+    background: var(--tia-accent-soft);
+}
+
+.tia-badge.is-ok {
+    color: var(--tia-ok);
+    border-color: var(--tia-ok);
+    background: var(--tia-canvas);
+}
+
+.tia-badge.is-warn {
+    color: var(--tia-warn);
+    border-color: var(--tia-warn);
+    background: var(--tia-canvas);
+}
+
+.tia-badge.is-muted {
+    color: var(--tia-text-3);
+    background: var(--tia-panel);
+}
+
+.tia-code,
+.code-block {
+    overflow: hidden;
+    margin: var(--tia-pad) 0;
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    background: var(--tia-code-bg);
+}
+
+.tia-code-head,
+.code-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 var(--tia-pad);
+    color: var(--tia-text-inv);
+    background: var(--tia-code-head);
+    border-bottom: 1px solid var(--tia-line);
+    font: var(--tia-fs-xs) var(--tia-mono);
+}
+
+.tia-code pre,
+.code-block pre {
+    margin: 0;
+    padding: var(--tia-pad-lg);
+    overflow: auto;
+    max-height: min(52vh, 560px);
+    scrollbar-gutter: stable;
+    color: var(--tia-code-text);
+    font: var(--tia-fs-sm) / 1.55 var(--tia-mono);
+}
+
+.tia-empty {
+    padding: var(--tia-pad-lg);
+    color: var(--tia-text-3);
+    font-size: var(--tia-fs-sm);
+    text-align: center;
+}
+
+.tia-alert,
+.tia-result {
+    margin-top: var(--tia-pad);
+    padding: var(--tia-pad);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    font-size: var(--tia-fs-sm);
+    line-height: var(--tia-lh);
+}
+
+.tia-alert.is-info { color: var(--tia-accent-2); border-color: var(--tia-accent-line); background: var(--tia-accent-soft); }
+.tia-alert.is-warn { color: var(--tia-warn); border-color: var(--tia-warn); background: var(--tia-canvas); }
+.tia-alert.is-ok, .tia-result.is-ok { color: var(--tia-ok); border-color: var(--tia-ok); background: var(--tia-canvas); }
+.tia-alert.is-err, .tia-result.is-err { color: var(--tia-err); border-color: var(--tia-err); background: var(--tia-canvas); }
+
+.tia-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--tia-text-2);
+    font-size: var(--tia-fs-sm);
+}
+
+.spacer { flex: 1; }
+.hidden { display: none !important; }
+
+@media (max-width: 1100px) {
+    .tia-portal-shell { min-width: 0; }
+    .tia-body { grid-template-columns: 200px minmax(0, 1fr); }
+    .tia-inspector { display: none; }
+}
+
+@media (max-width: 760px) {
+    .tia-shell { grid-template-rows: auto auto minmax(0, 1fr) var(--tia-status-h); }
+    .tia-titlebar,
+    .tia-ribbon { flex-wrap: wrap; }
+    .tia-titlebar { min-height: var(--tia-titlebar-h); }
+    .tb-project { order: 3; flex-basis: 100%; justify-content: flex-start; }
+    .tia-ribbon-group { min-height: var(--tia-ribbon-h); }
+    .tia-body { grid-template-columns: minmax(0, 1fr); }
+    .tia-tree-col { display: none; }
+}
+
+/* ---- 当前模型测试状态（主界面模型下拉框旁）----
+   独立于全局 .tia-led 状态灯：测试通过=绿灯、失败=红灯、测试中=黄灯、未测试=灰灯。
+   不修改全局 --tia-ok（蓝色），避免影响其他状态灯。 */
+.tia-model-test-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    color: var(--tia-text-2);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.tia-model-test-led {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: #9ca3af;
+}
+
+.tia-model-test-led.is-testing {
+    background: #eab308;
+    box-shadow: 0 0 6px rgba(234, 179, 8, 0.45);
+}
+
+.tia-model-test-led.is-pass {
+    background: #16a34a;
+    box-shadow: 0 0 6px rgba(22, 163, 74, 0.45);
+}
+
+.tia-model-test-led.is-fail {
+    background: #dc2626;
+    box-shadow: 0 0 6px rgba(220, 38, 38, 0.45);
+}
+
+.tia-model-test-led.is-idle {
+    background: #9ca3af;
+}
+
+
+/* ============================================================
+   工业级设计纪律(docs/design/DESIGN.md · Carbon 增量)
+   只增不改:既有色板/尺寸 token 不动(被测试锁定)。
+   原则:扁平直角、细边框、大写微标签、等宽数字、清晰焦点。
+   ============================================================ */
+
+/* 大写微标签:ribbon 组名/树栏目/面板头/检查器标题——工程控制台的标志 */
+.rg-label,
+.rt-head,
+.fullpanel-head,
+.tia-tree-node.is-folder,
+.tia-insp-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tia-text-3);
+}
+/* 中文大写无意义,但字距与字重仍拉开层级;拉丁部分自然呈现大写 */
+
+/* 等宽数字:状态栏耗时/实时树/技术值,工业仪表的读数感 */
+.tia-statusbar,
+.rt-tree,
+.tia-table.is-kv td:last-child,
+.output-list,
+.tia-insp-row b {
+    font-variant-numeric: tabular-nums;
+}
+
+/* 树节点与 tab 的层级细化 */
+.tia-tree-node {
+    letter-spacing: .02em;
+}
+.tia-tab {
+    letter-spacing: .03em;
+}
+
+/* 按钮字距:小号大写感(拉丁) */
+.tia-btn {
+    letter-spacing: .02em;
+}
+
+/* 清晰焦点环:键盘可达性=专业感,主蓝 2px 外描边 */
+.tia-tab:focus-visible,
+.tia-btn:focus-visible,
+.tia-select:focus-visible,
+.tia-input:focus-visible,
+.tia-tree-node:focus-visible,
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--tia-accent);
+    outline-offset: 1px;
+}
+
+/* 细滚动条:不抢戏 */
+.tia-tree-col ::-webkit-scrollbar,
+.tia-tree::-webkit-scrollbar,
+.tia-messages::-webkit-scrollbar,
+.tia-inspector::-webkit-scrollbar,
+.fullpanel-body::-webkit-scrollbar,
+.rt-tree::-webkit-scrollbar,
+.output-list::-webkit-scrollbar,
+.tia-composer textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.tia-tree-col ::-webkit-scrollbar-thumb,
+.tia-tree::-webkit-scrollbar-thumb,
+.tia-messages::-webkit-scrollbar-thumb,
+.tia-inspector::-webkit-scrollbar-thumb,
+.fullpanel-body::-webkit-scrollbar-thumb,
+.rt-tree::-webkit-scrollbar-thumb,
+.output-list::-webkit-scrollbar-thumb,
+.tia-composer textarea::-webkit-scrollbar-thumb {
+    background: var(--tia-line);
+    border-radius: 4px;
+}
+.tia-tree-col ::-webkit-scrollbar-thumb:hover,
+.tia-tree::-webkit-scrollbar-thumb:hover,
+.tia-messages::-webkit-scrollbar-thumb:hover,
+.tia-inspector::-webkit-scrollbar-thumb:hover,
+.fullpanel-body::-webkit-scrollbar-thumb:hover,
+.rt-tree::-webkit-scrollbar-thumb:hover,
+.output-list::-webkit-scrollbar-thumb:hover,
+.tia-composer textarea::-webkit-scrollbar-thumb:hover {
+    background: var(--tia-text-3);
+}
+.tia-tree-col ::-webkit-scrollbar-track,
+.tia-tree::-webkit-scrollbar-track,
+.tia-messages::-webkit-scrollbar-track,
+.tia-inspector::-webkit-scrollbar-track,
+.fullpanel-body::-webkit-scrollbar-track,
+.rt-tree::-webkit-scrollbar-track,
+.output-list::-webkit-scrollbar-track,
+.tia-composer textarea::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 标题栏品牌区字距收紧,更像工程软件 */
+.tb-brand {
+    letter-spacing: .04em;
+}
+.tb-sub {
+    letter-spacing: .1em;
+}
+
+/* ribbon 组分隔:右侧细竖线换成上下等距的 hairline 感(扁平纪律) */
+.tia-ribbon-group + .tia-ribbon-group {
+    border-left: 1px solid var(--tia-line-soft);
+}

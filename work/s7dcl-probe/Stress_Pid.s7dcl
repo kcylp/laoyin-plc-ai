@@ -1,0 +1,42 @@
+﻿{
+    S7_EditorMode := "SCL";
+    S7_Optimized := "TRUE";
+    S7_Version := "0.1"
+}
+FUNCTION_BLOCK "Stress_Pid"
+    VAR_INPUT
+        { S7_MLC := "MLC_Sp" }
+        Setpoint : Real;
+        { S7_MLC := "MLC_4Y9" }
+        ProcessValue : Real;
+        { S7_MLC := "MLC_3BL" }
+        ManualEnable : Bool;
+        { S7_MLC := "MLC_Np" }
+        ManualValue : Real;
+        { S7_MLC := "MLC_3Hh" }
+        Reset : Bool;
+    END_VAR
+    VAR_OUTPUT
+        { S7_MLC := "MLC_tF" }
+        Output : Real;
+        { S7_MLC := "MLC_eq" }
+        Error : Bool;
+    END_VAR
+    VAR
+        { S7_MLC := "MLC_3vN" }
+        "Pid" : PID_Compact;
+    END_VAR
+
+    { S7_Language := "SCL" }
+    NETWORK
+        
+            #Pid(Setpoint := #Setpoint,
+                 Input := #ProcessValue,
+                 ManualEnable := #ManualEnable,
+                 ManualValue := #ManualValue,
+                 Reset := #Reset,
+                 Output => #Output,
+                 Error => #Error);
+        
+    END_NETWORK
+END_FUNCTION_BLOCK

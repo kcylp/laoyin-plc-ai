@@ -1,0 +1,379 @@
+@import url("tia.css");
+
+body.settings-console,
+body.env-console {
+    min-width: 0;
+    min-height: 100vh;
+    overflow: auto;
+    color: var(--tia-text);
+    background: var(--tia-panel);
+    font: var(--tia-fs) / var(--tia-lh) var(--tia-font);
+}
+
+body.settings-console::before,
+body.env-console::before {
+    display: none;
+}
+
+body.settings-console .container,
+body.env-console .container {
+    width: 100%;
+    min-height: 100vh;
+    color: var(--tia-text);
+    background: var(--tia-panel);
+}
+
+body.settings-console .header,
+body.env-console .header {
+    min-height: 52px;
+    padding: 9px clamp(14px, 2vw, 28px);
+    color: var(--tia-titlebar-text);
+    background: var(--tia-titlebar);
+    border: 0;
+    border-bottom: 1px solid var(--tia-titlebar-2);
+    box-shadow: none;
+}
+
+body.settings-console .header-content,
+body.env-console .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(1440px, 100%);
+    margin: 0 auto;
+    gap: var(--tia-pad-lg);
+}
+
+body.settings-console .header h1,
+body.env-console .header h1,
+body.settings-console .settings-header .header-text h1 {
+    margin: 0;
+    color: var(--tia-titlebar-text);
+    font: 700 16px/1.25 var(--tia-font);
+    text-shadow: none;
+}
+
+body.settings-console .header p,
+body.env-console .header p,
+body.settings-console .settings-header .header-text p {
+    margin: 3px 0 0;
+    color: var(--tia-titlebar-muted);
+    font-size: var(--tia-fs-sm);
+    font-weight: 600;
+}
+
+body.settings-console .nav-pill,
+body.settings-console .settings-logout,
+body.settings-console .logout-btn,
+body.env-console .logout-btn {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: var(--tia-radius);
+    color: var(--tia-titlebar-text);
+    background: rgba(255, 255, 255, .06);
+    box-shadow: none;
+    font: inherit;
+    text-decoration: none;
+}
+
+body.settings-console .nav-pill:hover,
+body.settings-console .settings-logout:hover,
+body.settings-console .logout-btn:hover,
+body.env-console .logout-btn:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, .55);
+    background: rgba(255, 255, 255, .12);
+    transform: none;
+}
+
+body.settings-console .settings-page {
+    padding: 18px clamp(14px, 2vw, 28px) 28px;
+    background: var(--tia-panel);
+}
+
+body.settings-console .settings-layout {
+    width: min(1440px, 100%);
+    max-width: 1440px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: var(--tia-pad-lg);
+}
+
+body.settings-console .section-card,
+body.settings-console .side-card,
+body.settings-console .provider-card,
+body.settings-console .model-preview {
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius-lg);
+    background: var(--tia-canvas);
+    box-shadow: none;
+}
+
+body.settings-console .section-card,
+body.settings-console .side-card {
+    position: relative;
+    overflow: hidden;
+}
+
+body.settings-console .section-card {
+    padding: var(--tia-pad-lg);
+    margin-bottom: var(--tia-pad-lg);
+}
+
+body.settings-console .side-card {
+    padding: var(--tia-pad-lg);
+}
+
+body.settings-console .section-card::before,
+body.settings-console .side-card::before {
+    display: none;
+}
+
+body.settings-console .settings-page h2,
+body.settings-console .side-card h3 {
+    margin: 0 0 var(--tia-pad-lg);
+    padding-bottom: var(--tia-pad);
+    color: var(--tia-text);
+    border-bottom: 1px solid var(--tia-line);
+    font: 700 13px/1.3 var(--tia-font);
+    letter-spacing: 0;
+}
+
+body.settings-console .settings-page h2::before {
+    content: "";
+}
+
+body.settings-console .side-card p,
+body.settings-console .side-card li,
+body.settings-console .muted-empty,
+body.settings-console .pc-url,
+body.settings-console .pc-key {
+    color: var(--tia-text-2);
+}
+
+body.settings-console .side-card code {
+    padding: 2px 5px;
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line-soft);
+    border-radius: var(--tia-radius);
+    background: var(--tia-panel);
+}
+
+body.settings-console .form-row label {
+    color: var(--tia-text-2);
+    font: 600 var(--tia-fs-sm)/1.3 var(--tia-font);
+    letter-spacing: 0;
+}
+
+body.settings-console .form-row input,
+body.settings-console .form-row select {
+    min-height: 30px;
+    padding: 4px 7px;
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    background: var(--tia-canvas);
+    font: inherit;
+}
+
+body.settings-console .form-row input:focus,
+body.settings-console .form-row select:focus {
+    border-color: var(--tia-accent);
+    outline: 2px solid var(--tia-accent-line);
+    outline-offset: 1px;
+}
+
+body.settings-console .btn-primary,
+body.settings-console .btn-ghost,
+body.settings-console .pc-actions button,
+body.settings-console .pc-eye {
+    min-height: 28px;
+    padding: 0 9px;
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    background: var(--tia-canvas);
+    box-shadow: none;
+    font: 600 var(--tia-fs-sm)/1 var(--tia-font);
+}
+
+body.settings-console .btn-primary {
+    color: var(--tia-text-inv);
+    border-color: var(--tia-accent);
+    background: var(--tia-accent);
+}
+
+body.settings-console .btn-primary:hover {
+    color: #fff;
+    border-color: var(--tia-accent-2);
+    background: var(--tia-accent-2);
+}
+
+body.settings-console .btn-ghost:hover,
+body.settings-console .pc-actions button:hover,
+body.settings-console .pc-eye:hover {
+    color: var(--tia-accent-2);
+    border-color: var(--tia-accent-line);
+    background: var(--tia-accent-soft);
+}
+
+body.settings-console .pc-actions button.del:hover {
+    color: var(--tia-err);
+    border-color: var(--tia-err);
+    background: #fff;
+}
+
+body.settings-console .provider-card {
+    align-items: flex-start;
+    padding: var(--tia-pad-lg);
+    margin-bottom: var(--tia-pad);
+    transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+body.settings-console .provider-card:hover {
+    border-color: var(--tia-accent-line);
+    background: #fbfdff;
+    box-shadow: none;
+}
+
+body.settings-console .pc-name {
+    color: var(--tia-text);
+    font-size: 13px;
+}
+
+body.settings-console .pc-status.gray { background: var(--tia-idle); box-shadow: none; }
+body.settings-console .pc-status.ok { background: var(--tia-ok); box-shadow: none; }
+body.settings-console .pc-status.yellow { background: var(--tia-warn); box-shadow: none; }
+body.settings-console .pc-status.red { background: var(--tia-err); box-shadow: none; }
+
+body.settings-console .tag,
+body.settings-console .tag-context {
+    padding: 2px 6px;
+    color: var(--tia-text-2);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    background: var(--tia-panel);
+    font: 600 var(--tia-fs-xs)/1.3 var(--tia-font);
+}
+
+body.settings-console .tag-context {
+    color: var(--tia-accent-2);
+    border-color: var(--tia-accent-line);
+    background: var(--tia-accent-soft);
+}
+
+body.settings-console .tag-current {
+    color: var(--tia-text-inv);
+    border-color: var(--tia-accent);
+    background: var(--tia-accent);
+    font-weight: 800;
+}
+
+body.settings-console .model-preview {
+    padding: var(--tia-pad);
+}
+
+body.settings-console .model-preview .mrow {
+    min-height: 32px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--tia-line-soft);
+}
+
+body.settings-console .model-preview .mrow .ctx {
+    color: var(--tia-accent-2);
+    border-color: var(--tia-accent-line);
+    border-radius: var(--tia-radius);
+}
+
+body.settings-console .msg {
+    border-radius: var(--tia-radius);
+    font-family: var(--tia-font);
+}
+
+body.settings-console .msg.ok {
+    color: var(--tia-ok);
+    border-color: var(--tia-ok);
+    background: #fff;
+}
+
+body.settings-console .msg.err {
+    color: var(--tia-err);
+    border-color: var(--tia-err);
+    background: #fff;
+}
+
+body.settings-console .settings-footer {
+    color: var(--tia-text-3);
+    border-top: 1px solid var(--tia-line);
+    background: var(--tia-ribbon);
+    font-family: var(--tia-font);
+}
+
+body.env-console .env-page {
+    width: min(900px, 100%);
+    max-width: 900px;
+    padding: 18px;
+}
+
+body.env-console .env-page h2 {
+    margin: 0 0 var(--tia-pad-lg);
+    color: var(--tia-text);
+    font-size: 14px;
+}
+
+body.env-console .env-card,
+body.env-console .hint {
+    padding: var(--tia-pad-lg);
+    margin-bottom: var(--tia-pad);
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius-lg);
+    background: var(--tia-canvas);
+}
+
+body.env-console .env-card .label { color: var(--tia-text); }
+body.env-console .env-card .val { color: var(--tia-text-2); }
+body.env-console .state.ok { color: var(--tia-ok); }
+body.env-console .state.warn { color: var(--tia-warn); }
+body.env-console .state.fail { color: var(--tia-err); }
+body.env-console .hint { line-height: 1.6; }
+body.env-console .hint code { color: var(--tia-text); background: var(--tia-panel); }
+
+body.env-console .btn-primary,
+body.env-console .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    color: var(--tia-text);
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius);
+    background: var(--tia-canvas);
+    font: inherit;
+    text-decoration: none;
+}
+
+body.env-console .btn-primary {
+    color: var(--tia-text-inv);
+    border-color: var(--tia-accent);
+    background: var(--tia-accent);
+}
+
+body.env-console .btn-primary:hover { background: var(--tia-accent-2); }
+body.env-console .btn-ghost:hover { border-color: var(--tia-accent-line); background: var(--tia-accent-soft); }
+body.env-console .loading { color: var(--tia-text-3); }
+
+@media (max-width: 920px) {
+    body.settings-console .settings-layout { grid-template-columns: 1fr; }
+    body.settings-console .settings-side { position: static; }
+}
+
+@media (max-width: 620px) {
+    body.settings-console .header-content,
+    body.env-console .header-content { align-items: flex-start; flex-direction: column; }
+    body.settings-console .settings-page,
+    body.env-console .env-page { padding: var(--tia-pad); }
+    body.settings-console .provider-card { flex-wrap: wrap; }
+    body.settings-console .pc-actions { width: 100%; justify-content: flex-end; }
+}

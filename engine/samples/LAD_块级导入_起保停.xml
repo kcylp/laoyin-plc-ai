@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  老殷工控 - LAD 梯形图块级导入 黄金样板
+  2026-08-03 实测导入博途 V21 成功 + 编译 0 错 0 警。
+  这是唯一验证过能用的 FC + 梯形图 XML 格式，改程序时以它为基准，别重新发明。
+
+  四条踩过坑才确认的硬规则：
+  1. 根 <Document> 不带 xmlns；块元素 <SW.Blocks.FC> 也不带 xmlns；
+     AttributeList 里必须有空的 <Namespace />（漏了报 Missing 'Namespace' identifier attribute）
+  2. <Parts> 下 <Access> / <Part> / <Call> 三者平级。
+     变量引用是顶层 <Access>+<Symbol>，不是 <Part Name="Access">（否则报 instruction 'Access' cannot be found）
+  3. 常闭触点 = Part Name="Contact" + <Negated Name="operand" />。
+     没有 ContactNot 这个指令名；Negated 必须带 Name 指明取反哪个引脚，空元素会导入失败
+  4. FlgNet 元素上要带 xmlns=".../FlgNet/v4"；但送去 XSD 校验时必须先剥掉
+     （官方 LADFBD XSD 无 targetNamespace）
+-->
+<Document>
+  <Engineering version="V21" />
+  <DocumentInfo>
+    <ExportSetting>WithDefaults</ExportSetting>
+    <InstalledProducts>
+      <Product>
+        <DisplayName>Totally Integrated Automation Portal</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <Product>
+        <DisplayName>STEP 7 Professional</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+    </InstalledProducts>
+  </DocumentInfo>
+  <SW.Blocks.FC ID="0">
+    <AttributeList>
+      <AutoNumber>true</AutoNumber>
+      <HeaderAuthor />
+      <HeaderFamily />
+      <HeaderName />
+      <HeaderVersion>0.1</HeaderVersion>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Input">
+            <Member Name="Start" Datatype="Bool" Accessibility="Public" />
+            <Member Name="Stop" Datatype="Bool" Accessibility="Public" />
+          </Section>
+          <Section Name="Output">
+            <Member Name="Motor" Datatype="Bool" Accessibility="Public" />
+          </Section>
+          <Section Name="InOut" />
+          <Section Name="Temp" />
+          <Section Name="Constant" />
+          <Section Name="Return">
+            <Member Name="Ret_Val" Datatype="Void" Accessibility="Public" />
+          </Section>
+        </Sections>
+      </Interface>
+      <IsIECCheckEnabled>true</IsIECCheckEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <Name>LAD_StartStop</Name>
+      <Namespace />
+      <Number>11</Number>
+      <ProgrammingLanguage>LAD</ProgrammingLanguage>
+      <SetENOAutomatically>false</SetENOAutomatically>
+      <UDABlockProperties />
+      <UDAEnableTagReadback>false</UDAEnableTagReadback>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text>ladder start stop</Text>
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource>
+            <FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4">
+              <Parts>
+                <Access UId="31" Scope="LocalVariable">
+                  <Symbol>
+                    <Component Name="Start" />
+                  </Symbol>
+                </Access>
+                <Access UId="32" Scope="LocalVariable">
+                  <Symbol>
+                    <Component Name="Stop" />
+                  </Symbol>
+                </Access>
+                <Access UId="33" Scope="LocalVariable">
+                  <Symbol>
+                    <Component Name="Motor" />
+                  </Symbol>
+                </Access>
+                <Part Name="Contact" UId="21" />
+                <Part Name="Contact" UId="22">
+                  <Negated Name="operand" />
+                </Part>
+                <Part Name="Coil" UId="23" />
+              </Parts>
+              <Wires>
+                <Wire UId="51">
+                  <Powerrail />
+                  <NameCon UId="21" Name="in" />
+                </Wire>
+                <Wire UId="52">
+                  <IdentCon UId="31" />
+                  <NameCon UId="21" Name="operand" />
+                </Wire>
+                <Wire UId="53">
+                  <NameCon UId="21" Name="out" />
+                  <NameCon UId="22" Name="in" />
+                </Wire>
+                <Wire UId="54">
+                  <IdentCon UId="32" />
+                  <NameCon UId="22" Name="operand" />
+                </Wire>
+                <Wire UId="55">
+                  <NameCon UId="22" Name="out" />
+                  <NameCon UId="23" Name="in" />
+                </Wire>
+                <Wire UId="56">
+                  <IdentCon UId="33" />
+                  <NameCon UId="23" Name="operand" />
+                </Wire>
+              </Wires>
+            </FlgNet>
+          </NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="4" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="5" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text>network 1</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="6" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="7" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text>start stop ladder</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <MultilingualText ID="8" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="9" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text>LAD_StartStop</Text>
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.FC>
+</Document>

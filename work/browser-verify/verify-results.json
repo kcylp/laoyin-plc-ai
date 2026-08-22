@@ -1,0 +1,62 @@
+{
+  "settings_initial_A": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status pass\",\"text\":\"测试通过\"}"
+  },
+  "settings_initial_B": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status unknown\",\"text\":\"未测试\"}"
+  },
+  "settings_testing_B": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status testing\",\"text\":\"测试中\"}"
+  },
+  "settings_fail_B": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status fail\",\"text\":\"测试未通过\",\"msg\":\"⚠️ 模型列表已读取（2 个模型），但聊天通道测试未通过：[坏地址验收站] mock chat denied\"}"
+  },
+  "settings_fail_msg": {
+    "ok": true,
+    "detail": "⚠️ 模型列表已读取（2 个模型），但聊天通道测试未通过：[坏地址验收站] mock chat denied"
+  },
+  "settings_fail_preview_kept": {
+    "ok": true,
+    "detail": "preview visible=true"
+  },
+  "settings_pass_A": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status pass\",\"text\":\"测试通过\",\"msg\":\"✅ 测试通过：模型列表可读取，聊天通道探测成功（2 个模型）\"}"
+  },
+  "workbench_A_green": {
+    "ok": true,
+    "detail": "{\"led\":\"tia-model-test-led is-pass\",\"text\":\"测试通过\"}"
+  },
+  "workbench_B_gray": {
+    "ok": true,
+    "detail": "{\"led\":\"tia-model-test-led is-idle\",\"text\":\"未测试\"}"
+  },
+  "workbench_A_back_green": {
+    "ok": true,
+    "detail": "{\"led\":\"tia-model-test-led is-pass\",\"text\":\"测试通过\"}"
+  },
+  "workbench_refresh_keep": {
+    "ok": true,
+    "detail": "{\"led\":\"tia-model-test-led is-pass\",\"text\":\"测试通过\"}"
+  },
+  "workbench_760px": {
+    "ok": true,
+    "detail": "{\"text\":\"测试通过\",\"rect\":62}"
+  },
+  "config_update_api": {
+    "ok": true,
+    "detail": "{\"success\":true,\"id\":8}"
+  },
+  "settings_reset_after_edit": {
+    "ok": true,
+    "detail": "{\"cls\":\"pc-status unknown\",\"text\":\"未测试\"}"
+  },
+  "official_fallback_gray": {
+    "ok": true,
+    "detail": "{\"led\":\"tia-model-test-led is-idle\",\"text\":\"未测试\"}"
+  }
+}

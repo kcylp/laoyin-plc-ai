@@ -1,0 +1,36 @@
+﻿{
+    S7_EditorMode := "SCL";
+    S7_Optimized := "TRUE";
+    S7_Version := "0.1"
+}
+FUNCTION_BLOCK "Stress_AnalogIn"
+    VAR_INPUT
+        { S7_MLC := "MLC_59W" }
+        RawValue : Int;
+        { S7_MLC := "MLC_4An" }
+        EngMin : Real;
+        { S7_MLC := "MLC_3ju" }
+        EngMax : Real;
+    END_VAR
+    VAR_OUTPUT
+        { S7_MLC := "MLC_3Pc" }
+        EngValue : Real;
+        { S7_MLC := "MLC_3fQ" }
+        Overflow : Bool;
+        { S7_MLC := "MLC_485" }
+        Underflow : Bool;
+    END_VAR
+    VAR_TEMP
+        Norm : Real;
+    END_VAR
+
+    { S7_Language := "SCL" }
+    NETWORK
+        
+            #Norm := NORM_X(MIN := 0, VALUE := #RawValue, MAX := 27648);
+            #EngValue := SCALE_X(MIN := #EngMin, VALUE := #Norm, MAX := #EngMax);
+            #Overflow := #RawValue > 27648;
+            #Underflow := #RawValue < 0;
+        
+    END_NETWORK
+END_FUNCTION_BLOCK

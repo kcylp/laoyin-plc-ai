@@ -1,0 +1,13 @@
+﻿MultiLingualTexts:
+  - id: MLC_59W
+    zh-CN: 模块原始值 0..27648（现场接 %IW）
+  - id: MLC_4An
+    zh-CN: 工程量下限
+  - id: MLC_3ju
+    zh-CN: 工程量上限
+  - id: MLC_3Pc
+    zh-CN: 标定后工程量
+  - id: MLC_3fQ
+    zh-CN: 超上限
+  - id: MLC_485
+    zh-CN: 低于下限（断线）

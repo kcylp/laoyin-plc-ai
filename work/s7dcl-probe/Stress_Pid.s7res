@@ -1,0 +1,17 @@
+﻿MultiLingualTexts:
+  - id: MLC_Sp
+    zh-CN: 设定值
+  - id: MLC_4Y9
+    zh-CN: 过程值（来自模拟量标定）
+  - id: MLC_3BL
+    zh-CN: 手动模式
+  - id: MLC_Np
+    zh-CN: 手动输出值
+  - id: MLC_3Hh
+    zh-CN: 重启控制器
+  - id: MLC_tF
+    zh-CN: PID 输出（送给模拟量输出标定）
+  - id: MLC_eq
+    zh-CN: 错误标志
+  - id: MLC_3vN
+    zh-CN: PID 控制器多重背景实例

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FlgNet>
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="Start_PB" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" />
+    <Part Name="Coil" UId="26" />
+  </Parts>
+  <Wires>
+    <Wire UId="27">
+      <Powerrail />
+      <NameCon UId="24" Name="in" />
+    </Wire>
+  </Wires>
+</FlgNet>

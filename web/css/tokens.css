@@ -1,0 +1,83 @@
+:root {
+    --tia-titlebar: #27344f;
+    --tia-titlebar-2: #1d2942;
+    --tia-titlebar-text: #ffffff;
+    --tia-titlebar-muted: rgba(255, 255, 255, .82);
+    --tia-ribbon: #eceff1;
+    --tia-ribbon-line: #cfd8dc;
+    --tia-panel: #f5f6f7;
+    --tia-canvas: #ffffff;
+    --tia-line: #d5dbde;
+    --tia-line-soft: #e6eaec;
+
+    --tia-text: #1f2b33;
+    --tia-text-2: #55636d;
+    --tia-text-3: #8a969e;
+    --tia-text-inv: #eef3f6;
+
+    --tia-accent: #1f6feb;
+    --tia-accent-2: #1858c4;
+    --tia-accent-soft: #e8f1fe;
+    --tia-accent-line: #a9c9f7;
+
+    --tia-ok: #1858c4;
+    --tia-warn: #c98a12;
+    --tia-err: #c62828;
+    --tia-idle: #9aa5ab;
+
+    --tia-font: "Segoe UI", "Microsoft YaHei", Tahoma, sans-serif;
+    --tia-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+    --tia-fs: 13px;
+    --tia-fs-sm: 12px;
+    --tia-fs-xs: 11px;
+    --tia-lh: 1.45;
+
+    --tia-radius: 3px;
+    --tia-radius-lg: 4px;
+    --tia-pad: 8px;
+    --tia-pad-lg: 12px;
+    --tia-row-h: 26px;
+    --tia-titlebar-h: 34px;
+    --tia-ribbon-h: 40px;
+    --tia-status-h: 26px;
+
+    --tia-code-bg: #1e232a;
+    --tia-code-head: #283039;
+    --tia-code-text: #d8e3eb;
+    --tia-overlay: rgba(0, 0, 0, .42);
+    --tia-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+}
+
+.tia-portal-shell,
+.tia-portal-shell * {
+    box-sizing: border-box;
+}
+
+.tia-portal-shell {
+    margin: 0;
+    min-width: 960px;
+    min-height: 100vh;
+    overflow: hidden;
+    color: var(--tia-text);
+    background: var(--tia-panel);
+    font: var(--tia-fs) / var(--tia-lh) var(--tia-font);
+}
+
+/* 待开发系列/语言:灰化不可点 */
+.tia-tab.is-disabled {
+    color: var(--tia-text-3);
+    cursor: not-allowed;
+}
+.tab-todo {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--tia-text-3);
+    background: var(--tia-line-soft);
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+/* 在线操作抽屉（TIA MCP 能力面板，靠右下拉） */

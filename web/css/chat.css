@@ -1,0 +1,57 @@
+.tia-messages {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--tia-pad-lg);
+    background: var(--tia-canvas);
+}
+
+.tia-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--tia-pad);
+    padding: var(--tia-pad);
+    background: var(--tia-panel);
+    border-top: 1px solid var(--tia-line);
+}
+
+.tia-composer textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 54px;
+    resize: vertical;
+}
+
+.tia-insp-section {
+    padding: var(--tia-pad-lg);
+    border-bottom: 1px solid var(--tia-line-soft);
+}
+
+.tia-insp-section > h3,
+.tia-insp-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 var(--tia-pad);
+    color: var(--tia-text);
+    font-size: var(--tia-fs-sm);
+}
+
+.tia-insp-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--tia-pad);
+    min-height: 22px;
+    font-size: var(--tia-fs-sm);
+}
+
+.tia-insp-row > :first-child {
+    color: var(--tia-text-2);
+}
+
+.tia-insp-row > :last-child {
+    overflow-wrap: anywhere;
+    color: var(--tia-text);
+    font-weight: 600;
+    text-align: right;
+}

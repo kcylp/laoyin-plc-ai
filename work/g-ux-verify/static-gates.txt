@@ -1,0 +1,23 @@
+﻿date=2026-08-06
+head=32e59bc6fb1b12baeadddcd9a846cc5a1a8343a6
+window.confirm=zero matches
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'routes/tia-mcp.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/c-workflow.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/tia-mcp-routes.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/css/panels.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/css/shell.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/inspector.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/online.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/tree.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'work/e2e-ux.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'work/ux-verify/verify-results.json', LF will be replaced by CRLF the next time Git touches it
+git diff --check=pass
+node --check routes/tia-mcp.js=pass
+node --check web/scaffold-panel.js=pass
+node --check web/hardware-panel.js=pass
+node --check web/inspector.js=pass
+node --check web/online.js=pass
+node --check web/tree.js=pass
+node --check work/e2e-ux.js=pass
+package manifests=unchanged

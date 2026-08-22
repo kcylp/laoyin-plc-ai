@@ -1,0 +1,9 @@
+﻿MultiLingualTexts:
+  - id: MLC_z2
+    zh-CN: N1 起保停自锁
+  - id: MLC_an
+    zh-CN: N2 星角切换延时5秒
+  - id: MLC_3pp
+    zh-CN: N3 星接触器(角未吸合时)
+  - id: MLC_3b8
+    zh-CN: N4 角接触器(星断开后)

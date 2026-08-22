@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 供应商设置 - 老殷工控PLC</title>
+    <link rel="stylesheet" href="web/css/tokens.css">
+    <link rel="stylesheet" href="web/css/components.css">
+    <style>
+        /* Settings page: quiet operations layout. */
+        .settings-header {
+            padding: 18px 32px;
+            background: var(--tia-titlebar);
+            flex-shrink: 0;
+        }
+        .settings-header-content {
+            max-width: 1180px;
+            margin: 0 auto;
+            gap: 24px;
+        }
+        .settings-header .header-text h1 {
+            margin: 0 0 4px;
+            font-size: 1.55rem;
+            line-height: 1.2;
+            letter-spacing: 0;
+        }
+        .settings-header .header-text p {
+            margin: 0;
+            font-size: 0.92rem;
+            color: rgba(255, 255, 255, 0.78);
+        }
+        .settings-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .nav-pill,
+        .settings-logout {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            text-decoration: none;
+            font-size: 0.86rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .nav-pill:hover,
+        .settings-logout:hover { background: rgba(255, 255, 255, 0.2); transform: none; }
+
+        .settings-page {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+            background: #f5f7f7;
+            padding: 24px 32px 36px;
+        }
+        .settings-layout {
+            max-width: 1180px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 22px;
+            align-items: start;
+        }
+        .settings-main { min-width: 0; }
+        .settings-side {
+            position: sticky;
+            top: 18px;
+            display: grid;
+            gap: 14px;
+        }
+        .settings-page h2 {
+            color: var(--tia-titlebar);
+            margin: 0 0 12px;
+            font-size: 1.28rem;
+            line-height: 1.25;
+        }
+        .section-card,
+        .side-card {
+            background: #fff;
+            border: 1px solid #dfe7e6;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(15, 79, 77, 0.05);
+        }
+        .section-card { padding: 22px; margin-bottom: 20px; }
+        .side-card { padding: 18px; }
+        .side-card h3 {
+            margin: 0 0 10px;
+            color: var(--tia-titlebar);
+            font-size: 1rem;
+        }
+        .side-card p,
+        .side-card li {
+            color: #526160;
+            font-size: 0.88rem;
+            line-height: 1.65;
+        }
+        .side-card ul { margin: 0; padding-left: 18px; }
+        .side-card code {
+            padding: 2px 5px;
+            border-radius: 5px;
+            background: var(--tia-accent-soft);
+            color: var(--tia-accent-2);
+            font-size: 0.82rem;
+        }
+
+        .provider-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 210px;
+            gap: 16px;
+        }
+        .form-row { margin: 0; }
+        .form-row.span-2 { grid-column: 1 / -1; }
+        .form-row label { display: block; font-size: 0.84rem; color: #526160; margin-bottom: 6px; font-weight: 600; }
+        .form-row input, .form-row select {
+            width: 100%;
+            height: 44px;
+            padding: 0 12px;
+            border: 1px solid #cfd8d7;
+            border-radius: 8px;
+            font-size: 0.94rem;
+            box-sizing: border-box;
+            background: #fff;
+            color: #1f2d2c;
+        }
+        .form-row input:focus, .form-row select:focus {
+            border-color: var(--tia-accent);
+            outline: 3px solid rgba(31, 111, 235, 0.14);
+        }
+        .btn-row { display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+        .btn-row.span-2 { grid-column: 1 / -1; }
+        .btn-primary,
+        .btn-ghost {
+            min-height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            padding: 0 16px;
+            text-decoration: none;
+        }
+        .btn-primary { background: var(--tia-accent); color: #fff; border: 1px solid var(--tia-accent); }
+        .btn-primary:hover { background: var(--tia-accent-2); }
+        .btn-ghost { background: #fff; color: var(--tia-accent-2); border: 1px solid var(--tia-accent-line); }
+        .btn-ghost:hover { background: var(--tia-accent-soft); border-color: var(--tia-accent); }
+
+        /* 供应商卡片：状态灯 + 信息区 + 操作区 */
+        .provider-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .provider-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
+        .pc-status {
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        }
+        /* 供应商测试状态：文字 + 灯。独立类名 pass/fail/testing/unknown，
+           不复用 ok/yellow/red/gray（operations.css 同名规则会覆盖颜色）。 */
+        .pc-test-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 92px;
+            flex-shrink: 0;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .pc-status.pass { background: #16a34a; box-shadow: 0 0 6px rgba(22, 163, 74, 0.45); }
+        .pc-status.fail { background: #dc2626; box-shadow: 0 0 6px rgba(220, 38, 38, 0.45); }
+        .pc-status.testing { background: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.45); }
+        .pc-status.unknown { background: #9ca3af; }
+        .pc-info { flex: 1; min-width: 0; }
+        .pc-name { font-weight: 600; font-size: 0.95rem; color: #333; }
+        .pc-url { font-size: 0.8rem; color: #888; margin-top: 2px; word-break: break-all; }
+        .pc-key { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #666; }
+        .pc-key-masked { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+        .pc-eye { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px; line-height: 1; }
+        .pc-eye:hover { opacity: 0.7; }
+        .pc-models { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #f0f0f0; color: #555; }
+        .tag-context { background: var(--tia-accent-soft); color: var(--tia-accent-2); }
+        .tag-current { background: var(--tia-accent); color: #fff; border-color: var(--tia-accent); font-weight: 800; }
+        .tag-blue { background: #dbeafe; color: #2563eb; }
+        .pc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .pc-actions button {
+            background: #fff; border: 1px solid #d1d5db; border-radius: 8px;
+            padding: 6px 10px; cursor: pointer; font-size: 0.8rem; color: #374151;
+            transition: all 0.2s;
+        }
+        .pc-actions button:hover { border-color: var(--tia-accent); color: var(--tia-accent-2); }
+        .pc-actions button.del:hover { border-color: #dc2626; color: #dc2626; }
+
+        .model-preview {
+            grid-column: 1 / -1;
+            margin-top: 2px; background: #f9fbfb; border: 1px solid #dfe7e6;
+            border-radius: 8px; padding: 12px; max-height: 260px; overflow-y: auto;
+        }
+        .model-preview .mrow { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.9rem; }
+        .model-preview .mrow .ctx { color: var(--tia-accent-2); font-size: 0.75rem; border: 1px solid var(--tia-accent-line); padding: 1px 6px; border-radius: 8px; }
+        .model-preview-title { color: var(--tia-titlebar); font-weight: 700; margin: 0 0 8px; }
+        .msg { padding: 10px 14px; border-radius: 8px; margin: 10px 0; display: none; font-size: 0.9rem; }
+        .msg.show { display: block; }
+        .msg.ok { background: var(--tia-accent-soft); color: var(--tia-accent-2); border: 1px solid var(--tia-accent-line); }
+        .msg.err { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .muted-empty { color:#7c8a89; margin:0; }
+        .settings-footer {
+            max-width: 1180px;
+            margin: 2px auto 0;
+            color: #7c8a89;
+            font-size: 0.78rem;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .settings-header-content { align-items: flex-start; flex-direction: column; }
+            .settings-header-actions { justify-content: flex-start; }
+            .settings-layout { grid-template-columns: 1fr; }
+            .settings-side { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 620px) {
+            .settings-header { padding: 16px 18px; }
+            .settings-page { padding: 18px 14px 28px; }
+            .provider-form { grid-template-columns: 1fr; }
+            .form-row.span-2, .btn-row.span-2 { grid-column: auto; }
+            .settings-side { grid-template-columns: 1fr; }
+            .provider-card { flex-wrap: wrap; }
+            .pc-actions { width: 100%; justify-content: flex-end; }
+        }
+    </style>
+    <link rel="stylesheet" href="operations.css">
+</head>
+<body class="settings-console tia-portal-shell">
+    <div class="container">
+        <header class="header settings-header">
+            <div class="header-content settings-header-content">
+                <div class="header-text">
+                    <h1>AI 供应商设置</h1>
+                    <p>统一管理官方模型、中转站和本机可用的模型列表。</p>
+                </div>
+                <div class="user-actions settings-header-actions">
+                    <a href="index.html" class="nav-pill">返回主界面</a>
+                    <a href="env-check.html" class="nav-pill">环境自检</a>
+                    <button id="logoutBtn" class="logout-btn settings-logout">退出登录</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="settings-page">
+            <div class="settings-layout">
+                <main class="settings-main">
+
+                    <div class="msg" id="msg"></div>
+
+                    <section class="section-card">
+                        <h2>添加供应商</h2>
+                        <div class="provider-form">
+                            <div class="form-row">
+                                <label>供应商名称</label>
+                                <input type="text" id="pName" placeholder="例如：DeepSeek / OpenAI 官方 / 我的中转站">
+                            </div>
+                            <div class="form-row">
+                                <label>协议</label>
+                                <select id="pWire">
+                                    <option value="auto">自动识别（推荐）</option>
+                                    <option value="openai">OpenAI 兼容</option>
+                                    <option value="anthropic">Anthropic 兼容</option>
+                                </select>
+                            </div>
+                            <div class="form-row span-2">
+                                <label>Base URL</label>
+                                <input type="text" id="pUrl" placeholder="https://api.xxx.com/v1 或 https://api.xxx.com/anthropic">
+                            </div>
+                            <div class="form-row span-2">
+                                <label>API Key</label>
+                                <input type="password" id="pKey" placeholder="sk-..." autocomplete="off">
+                            </div>
+                            <div class="btn-row span-2">
+                                <button class="btn-primary" id="saveBtn">保存供应商</button>
+                                <button class="btn-ghost" id="fetchBtn">获取模型列表</button>
+                                <input type="hidden" id="pId" value="">
+                            </div>
+                            <div class="model-preview" id="modelPreview" style="display:none;"></div>
+                        </div>
+                    </section>
+
+                    <section class="section-card">
+                        <h2>我的供应商</h2>
+                        <div id="providerList"><p class="muted-empty">加载中...</p></div>
+                    </section>
+                </main>
+
+                <aside class="settings-side">
+                    <div class="side-card">
+                        <h3>填写顺序</h3>
+                        <ul>
+                            <li>先填名称、Base URL 和 API Key。</li>
+                            <li>协议保持自动识别即可。</li>
+                            <li>获取模型后勾选要在主界面显示的模型。</li>
+                        </ul>
+                    </div>
+                    <div class="side-card">
+                        <h3>Base URL 示例</h3>
+                        <p><code>https://api.deepseek.com</code></p>
+                        <p><code>https://api.openai.com/v1</code></p>
+                        <p><code>https://你的中转站/v1</code></p>
+                    </div>
+                </aside>
+            </div>
+            <div class="settings-footer">老殷工控PLC · 未经授权 禁止商用</div>
+        </div>
+    </div>
+
+    <script src="ai-models.js"></script>
+    <script>
+    // ---- 认证检查 ----
+    const token = localStorage.getItem('token');
+    if (!token) { location.href = 'login.html'; }
+
+    // 所有拼进 innerHTML 的用户/远程可控字段必须过这里（防存储/远程 XSS）
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    const $ = (id) => document.getElementById(id);
+    const msgBox = $('msg');
+    function showMsg(text, type) {
+        msgBox.textContent = text;
+        msgBox.className = 'msg show ' + (type || 'ok');
+        setTimeout(() => msgBox.classList.remove('show'), 4000);
+    }
+    async function api(path, opts = {}) {
+        opts.headers = Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, opts.headers || {});
+        const r = await fetch(path, opts);
+        const j = await r.json().catch(() => ({}));
+        j.status = r.status;
+        return j;
+    }
+
+    let providerFormDirty = false;
+    let fetchedModels = [];
+    let lastSelectedModelId = '';
+    let currentModelId = '';
+    let currentProviders = new Map();
+    ['pName', 'pUrl', 'pWire', 'pKey'].forEach(id => {
+        $(id).addEventListener(id === 'pWire' ? 'change' : 'input', () => {
+            providerFormDirty = true;
+        });
+    });
+
+    // 模型标签：1M 上下文 → 高亮标签；其余普通标签。字段全部 escape。
+    function modelTag(m, providerId) {
+        const rawId = String((m && (m.model_id || m.id)) || '').trim();
+        const fullId = providerId ? AiModels.getWorkbenchModelId(providerId, [{ id: rawId }]) : '';
+        const isCurrent = !!fullId && fullId === currentModelId;
+        const is1m = (m.context_length >= 1000000) || /(^|[^a-z0-9])1m([^a-z0-9]|$)/i.test(rawId);
+        const label = escapeHtml(m.label || m.model_id);
+        const classes = ['tag'];
+        if (is1m) classes.push('tag-context');
+        if (isCurrent) classes.push('tag-current');
+        return `<span class="${classes.join(' ')}">${isCurrent ? '当前 · ' : ''}${is1m ? '1M · ' : ''}${label}</span>`;
+    }
+
+    // 测试状态统一映射：服务端 testStatus → 灯类 + 文案（passed/failed/testing/unknown）
+    const TEST_STATE_MAP = {
+        passed: ['pass', '测试通过'],
+        failed: ['fail', '测试未通过'],
+        testing: ['testing', '测试中'],
+        unknown: ['unknown', '未测试']
+    };
+    function providerTestState(status) {
+        const [cls, text] = TEST_STATE_MAP[status] || TEST_STATE_MAP.unknown;
+        return { cls, text };
+    }
+    function setProviderTestState(id, status, message = '') {
+        const box = $('test-state-' + id);
+        if (!box) return;
+        const [cls, text] = TEST_STATE_MAP[status] || TEST_STATE_MAP.unknown;
+        const light = box.querySelector('.pc-status');
+        const label = box.querySelector('span');
+        if (light) light.className = 'pc-status ' + cls;
+        if (label) label.textContent = text;
+        box.title = message || text;
+    }
+
+    // ---- 供应商列表 ----
+    async function loadProviders() {
+        const j = await api('/api/ai/providers');
+        const box = $('providerList');
+        if (!j.success || !j.providers.length) {
+            currentModelId = '';
+            currentProviders = new Map();
+            box.innerHTML = '<p style="color:#999">还没有供应商，先在上方添加一个。</p>';
+            return;
+        }
+        currentModelId = String(j.currentModelId || '').trim();
+        currentProviders = new Map(j.providers.map(p => [String(p.id), p]));
+        box.innerHTML = j.providers.map(p => {
+            const state = providerTestState(p.testStatus);
+            return `
+            <div class="provider-card" id="pc-${p.id}">
+                <div class="pc-test-state" id="test-state-${p.id}" title="${escapeHtml(p.testMessage || state.text)}">
+                    <i class="pc-status ${state.cls}"></i>
+                    <span>${state.text}</span>
+                </div>
+                <div class="pc-info">
+                    <div class="pc-name">${escapeHtml(p.name)}</div>
+                    <div class="pc-url">${escapeHtml(p.base_url)} · ${escapeHtml(p.wire_api)}</div>
+                    <div class="pc-key">
+                        <span class="pc-key-masked" id="key-${p.id}" data-masked="${escapeHtml(p.api_key_masked)}">${escapeHtml(p.api_key_masked)}</span>
+                        <button class="pc-eye" onclick="toggleKey(this)" data-id="${p.id}" title="显示/隐藏 API Key">👁</button>
+                    </div>
+                    <div class="pc-models">${(p.models || []).map(m => modelTag(m, p.id)).join('') || '<span class="tag">未启用模型</span>'}</div>
+                </div>
+                <div class="pc-actions">
+                    <button class="test" onclick="testProvider(${p.id}, this)">🔌 测试</button>
+                    <button class="edit" data-id="${p.id}" data-name="${escapeHtml(p.name)}" data-url="${escapeHtml(p.base_url)}" data-wire="${escapeHtml(p.wire_api)}">✏️ 编辑</button>
+                    <button class="del" onclick="delProvider(${p.id})">🗑 删除</button>
+                </div>
+            </div>
+        `;
+        }).join('');
+        box.querySelectorAll('.edit').forEach(b => b.onclick = () => editProvider(b.dataset));
+    }
+
+    // ---- API Key 眼睛切换：显示/隐藏明文 ----
+    async function toggleKey(btn) {
+        const id = btn.dataset.id;
+        const span = $('key-' + id);
+        if (!span) return;
+        if (btn.dataset.visible === 'true') {
+            span.textContent = span.dataset.masked;
+            btn.dataset.visible = 'false';
+            btn.textContent = '👁';
+            return;
+        }
+        const j = await api('/api/ai/providers/' + id + '/key');
+        if (!j.success || !j.key) {
+            showMsg(j.message || '获取 Key 失败', 'err');
+            return;
+        }
+        span.dataset.masked = span.textContent;
+        span.textContent = j.key;
+        btn.dataset.visible = 'true';
+        btn.textContent = '🙈';
+    }
+
+    function getModelId(m) {
+        return String(m && (m.id || m.model_id) || '').trim();
+    }
+
+    function getModelLabel(m) {
+        return String(m && (m.label || m.name || m.id || m.model_id) || '').trim();
+    }
+
+    function getModelContextLength(m) {
+        return m && (m.context_length ?? m.contextLength ?? m.max_context_length ?? m.context_window ?? null);
+    }
+
+    function renderModelPreview(models, options = {}) {
+        fetchedModels = Array.isArray(models) ? models : [];
+
+        const preview = $('modelPreview');
+        const providerId = String(options.providerId || '').trim();
+        const provider = providerId ? currentProviders.get(providerId) : null;
+        const enabledIds = new Set((options.selectedIds || (provider && provider.models || []).map(m => m.model_id)).map(id => String(id || '').trim()).filter(Boolean));
+        const savedFromBackend = providerId && currentModelId.startsWith('db' + providerId + '/')
+            ? currentModelId.slice(('db' + providerId + '/').length)
+            : '';
+        const savedModel = savedFromBackend || (providerId && localStorage.getItem('plcModel') && localStorage.getItem('plcModel').startsWith('db' + providerId + '/')
+            ? localStorage.getItem('plcModel').slice(('db' + providerId + '/').length)
+            : '');
+        const preferredModel = String(options.preferredModelId || savedModel).trim();
+        const initialModelId = AiModels.getInitialModelId(fetchedModels, [...enabledIds], preferredModel);
+        lastSelectedModelId = initialModelId || '';
+
+        preview.style.display = 'block';
+        if (!fetchedModels.length) {
+            preview.innerHTML = '<p style="color:#7c8a89;margin:0">没有从该供应商识别到模型，请检查 Base URL、协议和 Key。</p>';
+            return;
+        }
+
+        const providerText = provider ? '（来自 ' + escapeHtml(provider.name) + '）' : '';
+        preview.innerHTML = '<p class="model-preview-title">找到 ' + fetchedModels.length + ' 个模型' + providerText + '，勾选要启用的：</p>'
+            + fetchedModels.map((m, i) => {
+                const id = getModelId(m);
+                const contextLength = getModelContextLength(m);
+                const is1m = contextLength >= 1000000 || /(^|[^a-z0-9])1m([^a-z0-9]|$)/i.test(id);
+                const checked = enabledIds.size ? enabledIds.has(id) : id === initialModelId;
+                const label = escapeHtml(getModelLabel(m) || id);
+                const mid = escapeHtml(id);
+                return `<label class="mrow">
+                    <input type="checkbox" data-idx="${i}" ${checked ? 'checked' : ''}>
+                    <span>${label}</span>
+                    <code>${mid}</code>
+                    ${is1m ? '<span class="ctx">1M</span>' : ''}
+                </label>`;
+            }).join('')
+            + '<div class="btn-row"><button class="btn-primary" id="saveModelsBtn">保存所选模型</button></div>';
+
+        preview.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            const rememberSelectedModel = () => {
+                if (!cb.checked) return;
+                const m = fetchedModels[parseInt(cb.dataset.idx, 10)];
+                lastSelectedModelId = getModelId(m);
+            };
+            cb.addEventListener('change', rememberSelectedModel);
+            cb.addEventListener('click', rememberSelectedModel);
+            if (cb.checked && !lastSelectedModelId) rememberSelectedModel();
+        });
+
+        $('saveModelsBtn').onclick = async () => {
+            await saveSelectedModelsFromPreview({
+                providerId,
+                apiKeyOverride: options.apiKeyOverride || ''
+            });
+        };
+
+        if (options.scroll !== false) preview.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    // ---- 测试连接：先读模型列表，再用第一个模型探测真实聊天通道（双步判定）----
+    // 只有两步都成功才亮绿灯；列表可读但聊天探测失败 → 红灯但保留模型预览。
+    async function testProvider(id, btn) {
+        const old = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳';
+        setProviderTestState(id, 'testing', '测试中');
+        try {
+            const j = await api('/api/ai/providers/' + id + '/test', { method: 'POST' });
+            if (!j.success) {
+                // 模型列表读取失败：隐藏旧预览、清空缓存、明确错误（不能混成“没有模型”）
+                setProviderTestState(id, 'failed', j.testMessage || j.message || '连接失败');
+                fetchedModels = [];
+                const preview = $('modelPreview');
+                if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+                showMsg('❌ 模型列表读取失败：' + (j.message || '连接失败') + '，请检查 Base URL、协议和 API Key', 'err');
+                return;
+            }
+            // 模型列表已读取：无论探测成败都保留预览供用户选择
+            renderModelPreview(j.models || [], { providerId: id, scroll: true });
+            if (j.testStatus === 'passed') {
+                setProviderTestState(id, 'passed', j.testMessage || '');
+                showMsg('✅ 测试通过：模型列表可读取，聊天通道探测成功（' + j.count + ' 个模型）');
+            } else {
+                setProviderTestState(id, 'failed', j.testMessage || '聊天通道测试失败');
+                showMsg('⚠️ 模型列表已读取（' + j.count + ' 个模型），但聊天通道测试未通过：' + (j.testMessage || '未知原因'), 'err');
+            }
+        } catch (e) {
+            setProviderTestState(id, 'failed', e.message || '网络错误');
+            showMsg('❌ 测试失败：' + e.message, 'err');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = old;
+        }
+    }
+
+    function editProvider(d) {
+        $('pId').value = d.id;
+        $('pName').value = d.name;
+        $('pUrl').value = d.url;
+        $('pWire').value = d.wire;
+        $('pKey').value = '';
+        $('pKey').placeholder = '留空则保留原 Key';
+        providerFormDirty = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function delProvider(id) {
+        if (!confirm('删除这个供应商？它的模型配置也会一起删除。')) return;
+        const j = await api('/api/ai/providers/' + id, { method: 'DELETE' });
+        showMsg(j.message || '已删除');
+        loadProviders();
+    }
+
+    // ---- 保存 ----
+    async function saveCurrentProvider(apiKeyOverride = '') {
+        const body = {
+            id: $('pId').value || null,
+            name: $('pName').value.trim(),
+            base_url: $('pUrl').value.trim(),
+            api_key: $('pKey').value.trim() || apiKeyOverride,
+            wire_api: $('pWire').value
+        };
+        if (!body.name || !body.base_url) return { success: false, message: '请填写供应商名称和 Base URL' };
+        if (!body.id && !body.api_key) return { success: false, message: '新增供应商必须填写 API Key' };
+
+        let j = await api('/api/ai/providers', { method: 'POST', body: JSON.stringify(body) });
+        if (!j.success && j.status === 404 && body.id) {
+            body.id = null;
+            $('pId').value = '';
+            j = await api('/api/ai/providers', { method: 'POST', body: JSON.stringify(body) });
+        }
+        if (j.success) {
+            $('pId').value = String(j.id);
+            $('pKey').value = '';
+            $('pKey').placeholder = '留空则保留原 Key';
+            providerFormDirty = false;
+        }
+        return j;
+    }
+
+    $('saveBtn').onclick = async () => {
+        const j = await saveCurrentProvider();
+        if (j.success) {
+            const savedModels = await saveSelectedModelsFromPreview({ providerId: j.id, emptyIsError: false });
+            if (savedModels.success) return;
+            if (savedModels.empty) {
+                showMsg('供应商已保存；请至少勾选一个模型，再点击保存所选模型', 'err');
+            } else {
+                showMsg('供应商已保存，可以继续获取并启用模型');
+            }
+            await loadProviders();
+        } else showMsg(j.message || '保存失败', 'err');
+    };
+
+    async function saveSelectedModelsFromPreview(options = {}) {
+        const preview = $('modelPreview');
+        if (!preview || preview.style.display === 'none' || !fetchedModels.length) {
+            return { success: false, skipped: true };
+        }
+
+        const checked = [...preview.querySelectorAll('input[type=checkbox]:checked')].map(cb => {
+            const m = fetchedModels[parseInt(cb.dataset.idx, 10)];
+            const id = getModelId(m);
+            return { id, label: getModelLabel(m) || id, context_length: getModelContextLength(m) };
+        });
+        const ordered = AiModels.prioritizeSelectedModels(checked, lastSelectedModelId);
+        if (!ordered.length) {
+            if (options.emptyIsError !== false) showMsg('请至少勾选一个模型，再保存所选模型', 'err');
+            return { success: false, empty: true };
+        }
+
+        const explicitProviderId = options.providerId ? String(options.providerId) : '';
+        let pid = explicitProviderId || $('pId').value;
+        if (!pid || (!explicitProviderId && providerFormDirty)) {
+            const s = await saveCurrentProvider(options.apiKeyOverride || '');
+            if (!s.success) { showMsg('请先保存供应商：' + (s.message || ''), 'err'); return { success: false }; }
+            pid = s.id;
+        }
+
+        let r = await api('/api/ai/providers/' + pid + '/models', { method: 'POST', body: JSON.stringify({ models: ordered }) });
+        if (!r.success && r.status === 404) {
+            $('pId').value = '';
+            const s = await saveCurrentProvider(options.apiKeyOverride || '');
+            if (!s.success) { showMsg(s.message || '供应商保存失败', 'err'); return { success: false }; }
+            pid = s.id;
+            r = await api('/api/ai/providers/' + pid + '/models', { method: 'POST', body: JSON.stringify({ models: ordered }) });
+        }
+
+        if (!r.success) {
+            showMsg(r.message || '保存失败', 'err');
+            return { success: false };
+        }
+
+        $('pId').value = String(pid);
+        const workbenchModelId = r.currentModelId || AiModels.getWorkbenchModelId(pid, ordered);
+        if (r.currentModelId) {
+            currentModelId = r.currentModelId;
+            localStorage.setItem('plcModel', r.currentModelId);
+        } else if (workbenchModelId) {
+            localStorage.setItem('plcModel', workbenchModelId);
+        }
+        const selectedLabel = ordered[0] ? ordered[0].label : '';
+        const warning = r.probeWarning ? '；但真实聊天通道提示：' + r.probeWarning : '';
+        // 保存模型后同步刷新测试状态（服务端已按探测结果写 passed/failed）
+        if (r.testStatus) setProviderTestState(pid, r.testStatus, r.testMessage || '');
+        showMsg('已启用 ' + ordered.length + ' 个模型，首页当前模型已设为：' + selectedLabel + warning);
+        await loadProviders();
+        return { success: true, count: ordered.length, workbenchModelId };
+    }
+
+    // ---- 获取模型 ----
+    $('fetchBtn').onclick = async () => {
+        const url = $('pUrl').value.trim();
+        let key = $('pKey').value.trim();
+        if (!url) { showMsg('获取模型前请先填写 Base URL', 'err'); return; }
+        if (!key && $('pId').value) {
+            const keyResult = await api('/api/ai/providers/' + $('pId').value + '/key');
+            if (keyResult.success) key = keyResult.key;
+        }
+        if (!key) { showMsg('获取模型前请填写 API Key', 'err'); return; }
+        $('fetchBtn').textContent = '⏳ 获取中...';
+        const j = await api('/api/ai/fetch-models', { method: 'POST', body: JSON.stringify({ base_url: url, api_key: key, wire_api: $('pWire').value }) });
+        $('fetchBtn').textContent = '🔍 获取模型列表';
+        if (!j.success) { showMsg(j.message || '获取失败', 'err'); return; }
+
+        renderModelPreview(j.models, {
+            providerId: $('pId').value,
+            apiKeyOverride: key,
+            scroll: false
+        });
+    };
+
+    // 退出登录
+    $('logoutBtn').onclick = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        location.href = 'login.html';
+    };
+
+    loadProviders();
+    </script>
+</body>
+</html>

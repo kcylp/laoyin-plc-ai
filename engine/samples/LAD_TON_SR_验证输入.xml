@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V21" />
+  <DocumentInfo><ExportSetting>WithDefaults</ExportSetting></DocumentInfo>
+  <SW.Blocks.FB ID="0">
+    <AttributeList>
+      <AutoNumber>true</AutoNumber><HeaderAuthor /><HeaderFamily /><HeaderName /><HeaderVersion>0.1</HeaderVersion>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Input"><Member Name="Start" Datatype="Bool" Accessibility="Public" /><Member Name="Trig" Datatype="Bool" Accessibility="Public" /><Member Name="Rst" Datatype="Bool" Accessibility="Public" /></Section>
+          <Section Name="Output"><Member Name="Done" Datatype="Bool" Accessibility="Public" /><Member Name="Latch" Datatype="Bool" Accessibility="Public" /></Section>
+          <Section Name="InOut" /><Section Name="Static"><Member Name="Timer" Datatype="TON_TIME" Accessibility="Public" /></Section><Section Name="Temp" /><Section Name="Constant" />
+        </Sections>
+      </Interface>
+      <IsIECCheckEnabled>true</IsIECCheckEnabled><MemoryLayout>Optimized</MemoryLayout><Name>Ref_TonSR_Verify</Name><Namespace /><Number>103</Number><ProgrammingLanguage>LAD</ProgrammingLanguage><SetENOAutomatically>false</SetENOAutomatically><UDABlockProperties /><UDAEnableTagReadback>false</UDAEnableTagReadback>
+    </AttributeList>
+    <ObjectList>
+      <SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits"><AttributeList><NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4"><Parts><Access Scope="LocalVariable" UId="31"><Symbol><Component Name="Start" /></Symbol></Access><Access Scope="LocalVariable" UId="32"><Symbol><Component Name="Done" /></Symbol></Access><Access Scope="TypedConstant" UId="33"><Constant><ConstantValue>T#1s</ConstantValue></Constant></Access><Part Name="Contact" UId="21" /><Part Name="TON" Version="1.0" UId="24"><Instance Scope="LocalVariable" UId="25"><Component Name="Timer" /></Instance><TemplateValue Name="time_type" Type="Type">Time</TemplateValue></Part><Part Name="Coil" UId="26" /></Parts><Wires><Wire UId="41"><Powerrail /><NameCon UId="21" Name="in" /></Wire><Wire UId="42"><IdentCon UId="31" /><NameCon UId="21" Name="operand" /></Wire><Wire UId="43"><NameCon UId="21" Name="out" /><NameCon UId="24" Name="IN" /></Wire><Wire UId="44"><IdentCon UId="33" /><NameCon UId="24" Name="PT" /></Wire><Wire UId="45"><NameCon UId="24" Name="ET" /><OpenCon UId="34" /></Wire><Wire UId="46"><NameCon UId="24" Name="Q" /><NameCon UId="26" Name="in" /></Wire><Wire UId="47"><IdentCon UId="32" /><NameCon UId="26" Name="operand" /></Wire></Wires></FlgNet></NetworkSource><ProgrammingLanguage>LAD</ProgrammingLanguage></AttributeList></SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="4" CompositionName="CompileUnits"><AttributeList><NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4"><Parts><Access Scope="LocalVariable" UId="51"><Symbol><Component Name="Trig" /></Symbol></Access><Access Scope="LocalVariable" UId="52"><Symbol><Component Name="Latch" /></Symbol></Access><Part Name="Contact" UId="41" /><Part Name="SCoil" UId="42" /></Parts><Wires><Wire UId="61"><Powerrail /><NameCon UId="41" Name="in" /></Wire><Wire UId="62"><IdentCon UId="51" /><NameCon UId="41" Name="operand" /></Wire><Wire UId="63"><NameCon UId="41" Name="out" /><NameCon UId="42" Name="in" /></Wire><Wire UId="64"><IdentCon UId="52" /><NameCon UId="42" Name="operand" /></Wire></Wires></FlgNet></NetworkSource><ProgrammingLanguage>LAD</ProgrammingLanguage></AttributeList></SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="5" CompositionName="CompileUnits"><AttributeList><NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4"><Parts><Access Scope="LocalVariable" UId="71"><Symbol><Component Name="Rst" /></Symbol></Access><Access Scope="LocalVariable" UId="72"><Symbol><Component Name="Latch" /></Symbol></Access><Part Name="Contact" UId="61" /><Part Name="RCoil" UId="62" /></Parts><Wires><Wire UId="81"><Powerrail /><NameCon UId="61" Name="in" /></Wire><Wire UId="82"><IdentCon UId="71" /><NameCon UId="61" Name="operand" /></Wire><Wire UId="83"><NameCon UId="61" Name="out" /><NameCon UId="62" Name="in" /></Wire><Wire UId="84"><IdentCon UId="72" /><NameCon UId="62" Name="operand" /></Wire></Wires></FlgNet></NetworkSource><ProgrammingLanguage>LAD</ProgrammingLanguage></AttributeList></SW.Blocks.CompileUnit>
+    </ObjectList>
+  </SW.Blocks.FB>
+</Document>

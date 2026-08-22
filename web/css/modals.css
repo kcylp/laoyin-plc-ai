@@ -1,0 +1,57 @@
+.tia-modal-mask {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--tia-pad-lg);
+    background: var(--tia-overlay);
+}
+
+.tia-modal {
+    width: min(560px, 100%);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    border: 1px solid var(--tia-line);
+    border-radius: var(--tia-radius-lg);
+    background: var(--tia-canvas);
+    box-shadow: var(--tia-shadow);
+}
+
+.tia-modal-head,
+.tia-modal-foot {
+    display: flex;
+    align-items: center;
+    gap: var(--tia-pad);
+    padding: var(--tia-pad) var(--tia-pad-lg);
+    background: var(--tia-ribbon);
+}
+
+.tia-modal-head {
+    color: var(--tia-text);
+    border-bottom: 1px solid var(--tia-line);
+    font-weight: 700;
+}
+
+.tia-modal-body {
+    padding: var(--tia-pad-lg);
+}
+
+.tia-modal-foot {
+    border-top: 1px solid var(--tia-line);
+}
+
+.tia-modal-x {
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    color: var(--tia-text-2);
+    background: transparent;
+    cursor: pointer;
+    font: 20px/1 var(--tia-font);
+}
+
+.tia-modal-x:hover { color: var(--tia-err); }

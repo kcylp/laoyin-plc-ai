@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境检查 - 老殷工控PLC</title>
+    <style>
+        .env-page { max-width: 680px; margin: 0 auto; padding: 30px 20px; width: 100%; box-sizing: border-box; overflow-y: auto; }
+        .env-page h2 { color: var(--tia-titlebar); margin: 0 0 20px; }
+        .env-card {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 12px;
+            padding: 18px 20px; margin-bottom: 14px; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .env-card .label { font-weight: 600; color: #333; }
+        .env-card .val { font-size: 0.85rem; color: #888; margin-top: 3px; }
+        .env-card .state { font-weight: 700; font-size: 1.05rem; }
+        .state.ok { color: var(--tia-ok); }
+        .state.warn { color: #d97706; }
+        .state.fail { color: #dc2626; }
+        .hint { background: #fafbfc; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-top: 20px; font-size: 0.9rem; color: #444; line-height: 1.7; }
+        .hint code { background: #eef; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .btn-primary { background: var(--tia-accent); color:#fff; border:1px solid var(--tia-accent); padding:12px 22px; border-radius:8px; cursor:pointer; font-size:.95rem; }
+        .btn-primary:hover { background: var(--tia-accent-2); }
+        .btn-ghost { background:#fff; color:var(--tia-accent-2); border:1px solid var(--tia-accent-line); padding:12px 22px; border-radius:8px; cursor:pointer; font-size:.95rem; text-decoration:none; display:inline-block; }
+        .btn-ghost:hover { background: var(--tia-accent-soft); border-color: var(--tia-accent); }
+        .loading { color:#999; text-align:center; padding:40px; }
+    </style>
+    <link rel="stylesheet" href="operations.css">
+</head>
+<body class="env-console tia-portal-shell">
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>环境检查</h1>
+                    <p>看看这台机器能不能跑起来老殷工控PLC</p>
+                </div>
+                <div class="user-actions"><button id="logoutBtn" class="logout-btn">退出登录</button></div>
+            </div>
+        </header>
+
+        <div class="env-page">
+            <div id="loading" class="loading">正在检查...</div>
+            <div id="result" style="display:none;">
+                <div class="env-card" id="cardNode"><div><div class="label">Node.js</div><div class="val" id="valNode"></div></div><div class="state" id="stNode"></div></div>
+                <div class="env-card" id="cardTia"><div><div class="label">博途 Openness</div><div class="val" id="valTia"></div></div><div class="state" id="stTia"></div></div>
+                <div class="env-card" id="cardGroup"><div><div class="label">Openness 用户组</div><div class="val" id="valGroup"></div></div><div class="state" id="stGroup"></div></div>
+                <div class="env-card" id="cardAi"><div><div class="label">AI 供应商</div><div class="val" id="valAi"></div></div><div class="state" id="stAi"></div></div>
+                <div class="env-card" id="cardEng"><div><div class="label">EngineerYin 引擎</div><div class="val" id="valEng"></div></div><div class="state" id="stEng"></div></div>
+                <div class="env-card" id="cardMcp"><div><div class="label">博途在线引擎</div><div class="val" id="valMcp"></div></div><div class="state" id="stMcp"></div></div>
+                <div class="env-card" id="cardMail"><div><div class="label">邮件审批（SMTP/IMAP）</div><div class="val" id="valMail"></div></div><div class="state" id="stMail"></div></div>
+
+                <div class="hint" id="hint"></div>
+
+                <div class="btn-row">
+                    <button class="btn-primary" onclick="location.href='index.html'">进入主界面</button>
+                    <a class="btn-ghost" href="settings.html">去配置 AI 供应商</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const token = localStorage.getItem('token');
+    if (!token) location.href = 'login.html';
+    document.getElementById('logoutBtn').onclick = () => { localStorage.clear(); location.href='login.html'; };
+
+    function setState(id, state, text) {
+        const el = document.getElementById(id);
+        el.className = 'state ' + state;
+        el.textContent = text;
+    }
+    function setVal(id, text) { document.getElementById(id).textContent = text; }
+    function setCard(cardId, show) { document.getElementById(cardId).style.display = show ? '' : 'none'; }
+
+    fetch('/api/env-check', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => r.json())
+        .then(j => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').style.display = '';
+
+            // Node
+            setVal('valNode', 'Node.js ' + (window.navigator.userAgent.match(/Node\.js\/(\d+\.\d+)/) ? '运行中' : '网页版'));
+            setState('stNode', 'ok', '正常');
+
+            // TIA
+            if (j.opennessPath) {
+                setVal('valTia', 'TIA ' + (j.tiaVersion || '未知') + ' PublicAPI 已找到');
+                setState('stTia', 'ok', '正常');
+            } else {
+                setVal('valTia', j.message || '未检测到');
+                setState('stTia', 'fail', '未检测到');
+            }
+
+            // 用户组
+            if (j.inOpennessGroup) {
+                setVal('valGroup', '已加入 Siemens TIA Openness 组');
+                setState('stGroup', 'ok', '正常');
+            } else {
+                setVal('valGroup', '未加入 Openness 用户组，连接博途会失败');
+                setState('stGroup', 'warn', '需处理');
+            }
+
+            // AI
+            if (j.aiReady) {
+                setVal('valAi', '已配置 ' + (j.providerCount||0) + ' 个供应商');
+                setState('stAi', 'ok', '正常');
+            } else {
+                setVal('valAi', '还没有可用的模型，需要配置');
+                setState('stAi', 'warn', '需配置');
+            }
+
+            // 引擎
+            if (j.moduleFound) {
+                setVal('valEng', '引擎模块已找到，' + (j.schemaCount||0) + ' 个 XSD schema');
+                setState('stEng', 'ok', '正常');
+            } else {
+                setVal('valEng', 'engine 目录缺失');
+                setState('stEng', 'fail', '缺失');
+            }
+
+            // 博途在线引擎（建项目/下载/在线读值/HMI 的能力层）
+            if (j.mcpAvailable) {
+                setVal('valMcp', '在线引擎运行时已就位（建项目/下载/在线读值可用）');
+                setState('stMcp', 'ok', '正常');
+            } else {
+                setVal('valMcp', 'engine\\tia-mcp 运行时缺失，在线操作面板不可用');
+                setState('stMcp', 'warn', '缺失');
+            }
+
+            // 邮件审批（SMTP 授权码 = IMAP 授权码）
+            if (j.mailConfigured) {
+                setVal('valMail', 'SMTP 授权码已配置，新用户注册后可回复邮件审批');
+                setState('stMail', 'ok', '正常');
+            } else {
+                setVal('valMail', '未配置 SMTP 授权码（仍可用管理后台/链接审批）');
+                setState('stMail', 'warn', '需配置');
+            }
+
+            // 提示
+            const hints = [];
+            if (!j.inOpennessGroup) hints.push('1. 以管理员身份打开 PowerShell，执行：<br><code>net localgroup "Siemens TIA Openness" %USERNAME% /add</code><br>2. <b>注销后重新登录</b>才生效<br>3. 首次连接博途会弹授权框，要点“允许”');
+            if (!j.aiReady) hints.push('配置 AI 供应商：点下方“去配置 AI 供应商”，填入你的 Base URL、API Key，点“获取模型列表”。');
+            if (!j.opennessPath) hints.push('博途 Openness 未找到。需要安装 TIA Portal 并勾选 Openness 选件包。');
+            if (!j.mailConfigured) hints.push('邮件审批：编辑项目根目录 .env，把 <code>SMTP_PASS</code> 填成你的 QQ 邮箱授权码（<b>不是登录密码</b>：QQ邮箱 → 设置 → 账户 → POP3/IMAP/SMTP 服务 → 生成授权码）。配好后老板直接回复审批邮件（内容含「同意」/「不同意」）即可审批新用户；不配也能用管理后台审批。');
+            if (!j.mcpAvailable) hints.push('博途在线引擎缺失：把 engine\\tia-mcp 目录（在线引擎运行时）放回项目后重启服务即可；没有它「在线操作」面板不可用，但不影响程序生成与写入博途。');
+            document.getElementById('hint').innerHTML = hints.length ? '<b>需要处理：</b><br>' + hints.join('<br><br>') : '✅ 一切正常，可以直接开始。';
+        })
+        .catch(e => {
+            document.getElementById('loading').textContent = '检查失败：' + e.message;
+        });
+    </script>
+</body>
+</html>
