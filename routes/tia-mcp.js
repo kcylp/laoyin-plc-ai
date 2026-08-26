@@ -4,32 +4,68 @@ const os = require('node:os');
 const path = require('node:path');
 const { logTiaOperation } = require('../lib/logger');
 const { getSharedClient, TiaMcpClient } = require('../tia-mcp-client');
+const { sanitizeDiagnostic } = require('../lib/sanitize');
+const { explainTiaError } = require('../lib/tia-error-hints');
 
 module.exports = function createTiaMcpRoutes(deps) {
-    const { authenticateToken, localOnly, enqueueTiaOp, getUserById, getCurrentModel, listUserModels, llmStream, mcpEnsureAttached, parseBlocksFromTree, TIA_MCP_DANGEROUS, getPrewarmStatus } = deps;
+    const { authenticateToken, localOnly, enqueueTiaOp, queueSnapshot, getUserById, getCurrentModel, listUserModels, llmStream, mcpEnsureAttached, parseBlocksFromTree, getPrewarmStatus } = deps;
+    const requiresConfirmation = deps.requiresTiaMcpConfirmation || (() => true);
+    const getMcpClient = deps.getMcpClient || getSharedClient;
     const router = express.Router();
 
+function mcpErrorPayload(prefix, error, extra = {}) {
+    const rawDetail = [];
+    const errorDetail = error?.recentStderr || error?.stderr || error?.detail;
+    if (Array.isArray(errorDetail)) rawDetail.push(...errorDetail);
+    else if (errorDetail) rawDetail.push(...String(errorDetail).split(/\r?\n/));
+    try {
+        const statusDetail = getMcpClient()?.status?.()?.recentStderr;
+        if (Array.isArray(statusDetail)) rawDetail.push(...statusDetail);
+        else if (statusDetail) rawDetail.push(...String(statusDetail).split(/\r?\n/));
+    } catch {
+        // Error reporting must not mask the original MCP failure.
+    }
+    const detail = sanitizeDiagnostic(rawDetail);
+    const safeMessage = sanitizeDiagnostic(error?.message) || '未知错误';
+    return {
+        success: false,
+        ...extra,
+        message: `${prefix}: ${safeMessage}`,
+        detail,
+        hint: explainTiaError(error?.message, detail, { xml: extra.xml }),
+    };
+}
+
 router.get('/status', authenticateToken, localOnly, (req, res) => {
-    const client = getSharedClient();
-    res.json({ success: true, prewarm: getPrewarmStatus(), ...client.status() });
+    try {
+        const client = getMcpClient();
+        res.json({ success: true, prewarm: getPrewarmStatus(), queue: queueSnapshot ? queueSnapshot() : null, ...client.status() });
+    } catch (error) {
+        console.error('MCP 状态错误:', error.message);
+        res.status(500).json(mcpErrorPayload('MCP 状态获取失败', error));
+    }
 });
 
 router.get('/tools', authenticateToken, localOnly, async (req, res) => {
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const tools = await client.listTools();
         res.json({
             success: true,
             count: tools.length,
-            tools: tools.map(t => ({
-                name: t.name,
-                description: String(t.description || '').slice(0, 200),
-                dangerous: TIA_MCP_DANGEROUS.test(t.name),
-            })),
+            tools: tools.map(t => {
+                const requiresConfirm = requiresConfirmation(t.name);
+                return {
+                    name: t.name,
+                    description: String(t.description || '').slice(0, 200),
+                    requiresConfirm,
+                    dangerous: requiresConfirm,
+                };
+            }),
         });
     } catch (error) {
         console.error('MCP 工具清单错误:', error.message);
-        res.status(500).json({ success: false, message: 'MCP 工具清单获取失败: ' + error.message });
+        res.status(500).json(mcpErrorPayload('MCP 工具清单获取失败', error));
     }
 });
 
@@ -38,7 +74,7 @@ router.post('/connect', authenticateToken, localOnly, async (req, res) => {
     const user = getUserById(req.user.id);
     console.log(`[MCP] 连接博途 用户=${user ? user.username : req.user.id}`);
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const out = await enqueueTiaOp(async () => {
             const att = await mcpEnsureAttached(client);
             const state = await client.callTool('GetState', {}, 30000).catch(() => null);
@@ -47,28 +83,28 @@ router.post('/connect', authenticateToken, localOnly, async (req, res) => {
                 attached: att.ok ? `已挂接工程「${att.project}」` : att.note,
                 state: state && (TiaMcpClient.jsonOf(state) || TiaMcpClient.textOf(state).slice(0, 300)),
             };
-        });
+        }, { label: '连接博途', key: 'mcp:connect', timeoutMs: 300000 });
         res.json({ success: true, ...out });
     } catch (error) {
         console.error('MCP 连接错误:', error.message);
-        res.status(500).json({ success: false, message: 'MCP 连接失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('MCP 连接失败', error));
     }
 });
 
 router.get('/software-tree', authenticateToken, localOnly, async (req, res) => {
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const out = await enqueueTiaOp(async () => {
             const att = await mcpEnsureAttached(client);
             if (!att.ok) return { connected: false, note: att.note };
             const r = await client.callTool('GetSoftwareTree', { softwarePath: 'PLC_1' }, 60000);
             const tree = (TiaMcpClient.jsonOf(r) || {}).tree || '';
             return { connected: true, project: att.project, tree, blocks: parseBlocksFromTree(tree) };
-        });
+        }, { label: '读取软件树', key: 'mcp:software-tree', timeoutMs: 60000 });
         res.json({ success: true, ...out });
     } catch (error) {
         console.error('MCP 软件树错误:', error.message);
-        res.status(500).json({ success: false, message: '软件树获取失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('软件树获取失败', error));
     }
 });
 
@@ -84,7 +120,7 @@ router.post('/describe-block', authenticateToken, localOnly, async (req, res) =>
     const user = getUserById(req.user.id);
     console.log(`[MCP] 解读程序 ${target} 用户=${user ? user.username : req.user.id}`);
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const out = await enqueueTiaOp(async () => {
             const att = await mcpEnsureAttached(client);
             if (!att.ok) return { connected: false, note: att.note };
@@ -97,11 +133,11 @@ router.post('/describe-block', authenticateToken, localOnly, async (req, res) =>
                 language: j.language || '',
                 readable: j.readable || TiaMcpClient.textOf(r),
             };
-        });
+        }, { label: `解读程序 ${target}`, key: `mcp:describe:${target}`, timeoutMs: 60000 });
         res.json({ success: true, ...out });
     } catch (error) {
         console.error('MCP 解读程序错误:', error.message);
-        res.status(500).json({ success: false, message: '解读程序失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('解读程序失败', error));
     }
 });
 
@@ -112,17 +148,21 @@ router.post('/call', authenticateToken, localOnly, async (req, res) => {
     if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name)) {
         return res.status(400).json({ success: false, message: '工具名不合法' });
     }
-    const dangerous = TIA_MCP_DANGEROUS.test(name);
+    const dangerous = requiresConfirmation(name);
     if (dangerous && req.body.confirmed !== true) {
-        return res.status(400).json({ success: false, message: `工具 ${name} 属危险操作(下载/删除类),需要 confirmed:true`, dangerous: true });
+        return res.status(400).json({ success: false, message: `工具 ${name} 会修改工程、设备或外部文件，需要 confirmed:true`, dangerous: true, requiresConfirm: true });
     }
     const user = getUserById(req.user.id);
     console.log(`[MCP] 调用 ${name} 用户=${user ? user.username : req.user.id} 危险=${dangerous} 参数=${JSON.stringify(args).slice(0, 300)}`);
     const startedAt = Date.now();
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const timeoutMs = Math.min(Math.max(Number(req.body.timeoutMs) || 120000, 5000), 600000);
-        const result = await enqueueTiaOp(() => client.callTool(name, args, timeoutMs));
+        const result = await enqueueTiaOp(() => client.callTool(name, args, timeoutMs), {
+            label: `执行工具 ${name}`,
+            key: `mcp:call:${name}:${JSON.stringify(args)}`,
+            timeoutMs,
+        });
         logTiaOperation({
             user,
             op: 'mcp:' + name,
@@ -135,7 +175,7 @@ router.post('/call', authenticateToken, localOnly, async (req, res) => {
     } catch (error) {
         logTiaOperation({ user, op: 'mcp:' + name, target: args.softwarePath || args.blockPath || args.projectName || name, ms: Date.now() - startedAt, ok: false, err: error });
         console.error(`MCP 调用 ${name} 错误:`, error.message);
-        res.status(500).json({ success: false, tool: name, message: `MCP 调用 ${name} 失败: ` + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload(`MCP 调用 ${name} 失败`, error, { tool: name }));
     }
 });
 
@@ -185,7 +225,7 @@ router.post('/search-hardware', authenticateToken, localOnly, async (req, res) =
     const user = getUserById(req.user.id);
     const startedAt = Date.now();
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const result = await enqueueTiaOp(async () => {
             const attached = await mcpEnsureAttached(client);
             if (!attached.ok) {
@@ -194,14 +234,14 @@ router.post('/search-hardware', authenticateToken, localOnly, async (req, res) =
                 throw error;
             }
             return client.callTool('SearchHardwareCatalog', { keyword, limit });
-        });
+        }, { label: `搜索硬件 ${keyword}`, key: `mcp:hardware:${keyword}:${limit}`, timeoutMs: 60000 });
         const json = TiaMcpClient.jsonOf(result) || {};
         const items = normalizeHardwareItems(json).slice(0, limit);
         logTiaOperation({ user, op: 'mcp:SearchHardwareCatalog', target: keyword, ms: Date.now() - startedAt, ok: true, err: null });
         res.json({ success: true, keyword, limit, count: items.length, items });
     } catch (error) {
         logTiaOperation({ user, op: 'mcp:SearchHardwareCatalog', target: keyword, ms: Date.now() - startedAt, ok: false, err: error });
-        res.status(error.statusCode || 500).json({ success: false, connected: false, message: '硬件目录搜索失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('硬件目录搜索失败', error, { connected: false }));
     }
 });
 
@@ -210,7 +250,7 @@ router.post('/tag-tables', authenticateToken, localOnly, async (req, res) => {
     const user = getUserById(req.user.id);
     const startedAt = Date.now();
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const out = await enqueueTiaOp(async () => {
             const attached = await mcpEnsureAttached(client);
             if (!attached.ok) {
@@ -221,12 +261,12 @@ router.post('/tag-tables', authenticateToken, localOnly, async (req, res) => {
             const result = await client.callTool('GetPlcTagTables', { softwarePath });
             const json = TiaMcpClient.jsonOf(result);
             return { connected: true, project: attached.project, tables: normalizeTagTables(json), json, text: TiaMcpClient.textOf(result).slice(0, 20000) };
-        });
+        }, { label: '读取变量表', key: `mcp:tag-tables:${softwarePath}`, timeoutMs: 60000 });
         logTiaOperation({ user, op: 'mcp:GetPlcTagTables', target: softwarePath, ms: Date.now() - startedAt, ok: true, err: null });
         res.json({ success: true, softwarePath, ...out });
     } catch (error) {
         logTiaOperation({ user, op: 'mcp:GetPlcTagTables', target: softwarePath, ms: Date.now() - startedAt, ok: false, err: error });
-        res.status(error.statusCode || 500).json({ success: false, connected: false, message: '变量表读取失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('变量表读取失败', error, { connected: false }));
     }
 });
 
@@ -243,7 +283,7 @@ router.post('/export-s7dcl', authenticateToken, localOnly, async (req, res) => {
     let exportDir = '';
     try {
         exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'laoyin-s7dcl-'));
-        const client = getSharedClient();
+        const client = getMcpClient();
         const result = await enqueueTiaOp(async () => {
             const attached = await mcpEnsureAttached(client);
             if (!attached.ok) throw new Error(attached.note || '未挂接 TIA 工程');
@@ -268,7 +308,7 @@ router.post('/export-s7dcl', authenticateToken, localOnly, async (req, res) => {
                 regexName,
                 preservePath: false,
             }, 180000);
-        });
+        }, { label: `导出块 ${targetName}`, key: `mcp:export-s7dcl:${softwarePath}:${blockPath}`, timeoutMs: 180000 });
         const files = findFilesRecursive(exportDir).filter((filePath) => /\.s7dcl$/i.test(filePath));
         const preferred = files.find((filePath) => name && path.basename(filePath, path.extname(filePath)).toLowerCase() === name.toLowerCase()) || files[0];
         if (!preferred) {
@@ -281,19 +321,20 @@ router.post('/export-s7dcl', authenticateToken, localOnly, async (req, res) => {
         res.json({ success: true, softwarePath, blockPath, filename, content });
     } catch (error) {
         logTiaOperation({ user, op: 'mcp:ExportBlocksAsDocuments', target: blockPath || name || softwarePath, ms: Date.now() - startedAt, ok: false, err: error });
-        res.status(error.statusCode || 500).json({ success: false, message: 'S7DCL 导出失败: ' + error.message });
+        res.status(error.statusCode || 500).json(mcpErrorPayload('S7DCL 导出失败', error));
     } finally {
         if (exportDir) {
             try { fs.rmSync(exportDir, { recursive: true, force: true }); } catch { /* 临时目录由系统后续清理 */ }
         }
     }
 });
-async function chatOnce({ modelId, userId, messages }) {
+async function chatOnce({ modelId, userId, messages, signal }) {
     let text = '';
     await llmStream({
         modelId,
         userId,
         messages,
+        signal,
         onDelta: (delta) => { text += delta; },
     });
     return text;
@@ -331,6 +372,19 @@ router.post('/scaffold', authenticateToken, localOnly, async (req, res) => {
     const user = getUserById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: '用户不存在' });
 
+    let responseFinished = false;
+    const abortController = new AbortController();
+    const abortOnClose = () => {
+        if (!responseFinished && !abortController.signal.aborted) abortController.abort(new Error('client closed'));
+    };
+    req.on('aborted', abortOnClose);
+    res.on('close', abortOnClose);
+    const finish = () => {
+        responseFinished = true;
+        req.off('aborted', abortOnClose);
+        res.off('close', abortOnClose);
+    };
+
     let spec = req.body.spec && typeof req.body.spec === 'object' ? req.body.spec : null;
     let specSource = 'direct';
 
@@ -354,8 +408,10 @@ router.post('/scaffold', authenticateToken, localOnly, async (req, res) => {
                     { role: 'system', content: SCAFFOLD_SPEC_PROMPT },
                     { role: 'user', content: requirement },
                 ],
+                signal: abortController.signal,
             });
         } catch (e) {
+            finish();
             return res.status(502).json({ success: false, message: '模型生成 spec 失败: ' + e.message });
         }
         spec = extractSpecJson(raw);
@@ -368,7 +424,7 @@ router.post('/scaffold', authenticateToken, localOnly, async (req, res) => {
     console.log(`[MCP] 建工程 用户=${user.username} 项目=${spec.projectName} spec来源=${specSource} confirmed=${!!req.body.confirmed}`);
     const startedAt = Date.now();
     try {
-        const client = getSharedClient();
+        const client = getMcpClient();
         const out = await enqueueTiaOp(async () => {
             // MCP 侧 spec 参数是 string(JSON 文本),不是对象
             const specText = JSON.stringify(spec);
@@ -380,7 +436,7 @@ router.post('/scaffold', authenticateToken, localOnly, async (req, res) => {
                 runReport = TiaMcpClient.jsonOf(run) || TiaMcpClient.textOf(run);
             }
             return { dryReport, runReport };
-        });
+        }, { label: `建工程 ${spec.projectName}`, key: `mcp:scaffold:${spec.projectName}:${!!req.body.confirmed}`, timeoutMs: req.body.confirmed === true ? 600000 : 180000 });
         logTiaOperation({
             user,
             op: 'mcp:ScaffoldProject',
@@ -389,11 +445,13 @@ router.post('/scaffold', authenticateToken, localOnly, async (req, res) => {
             ok: true,
             err: null,
         });
+        finish();
         res.json({ success: true, specSource, spec, executed: req.body.confirmed === true, ...out });
     } catch (error) {
         logTiaOperation({ user, op: 'mcp:ScaffoldProject', target: spec.projectName, ms: Date.now() - startedAt, ok: false, err: error });
         console.error('MCP 建工程错误:', error.message);
-        res.status(500).json({ success: false, spec, message: '建工程失败: ' + error.message });
+        finish();
+        res.status(error.statusCode || 500).json(mcpErrorPayload('建工程失败', error, { spec }));
     }
 });
 

@@ -64,28 +64,23 @@ async function validateXml(btn) {
         });
         const data = await response.json();
 
-        const header = btn.closest('.code-header');
-        let resultBox = header.querySelector('.validate-result');
-        if (!resultBox) {
-            resultBox = document.createElement('div');
-            resultBox.className = 'validate-result';
-            header.appendChild(resultBox);
-        }
+        const resultBox = getResultBox(btn);
+        if (!resultBox) return;
 
         if (data.success && data.valid) {
-            resultBox.className = 'validate-result valid';
+            resultBox.className = 'validate-result ok';
             resultBox.textContent = '✅ XSD 校验通过！可以导入博途';
         } else {
             const errList = (data.errors || []).map(e =>
                 `  L${e.line}:${e.pos}  ${e.message}`
             ).join('\n');
-            resultBox.className = 'validate-result invalid';
+            resultBox.className = 'validate-result error';
             resultBox.textContent = '❌ XSD 校验失败：\n' + (errList || (data.message || '未知错误'));
         }
     } catch (e) {
         const text = '校验失败：' + e.message;
         outputPanel.push({ kind: 'error', title: 'XSD 校验异常', body: text });
-        if (btn) makeResultShower(btn)('invalid', '❌ ' + text);
+        if (btn) makeResultShower(btn)('error', '❌ ' + text);
     } finally {
         btn.textContent = old;
         btn.disabled = false;
@@ -114,7 +109,7 @@ async function sendToTia(btn) {
 
         if (!pre.success) {
             const message = formatPreflightFailure(pre);
-            showInlineResult('invalid', message);
+            showInlineResult('error', message);
             outputPanel.push({ kind: 'error', title: '写入预检失败', body: message, detail: pre });
             return;
         }
@@ -122,7 +117,7 @@ async function sendToTia(btn) {
         await startTiaImport(pre, { xml: code, token, btn });
     } catch (e) {
         const message = '❌ 请求出错：' + e.message;
-        showInlineResult('invalid', message);
+        showInlineResult('error', message);
         outputPanel.push({ kind: 'error', title: '写入请求异常', body: message });
     } finally {
         btn.textContent = old;
@@ -147,17 +142,23 @@ function formatPreflightFailure(pre) {
 
 function makeResultShower(btn) {
     return (cls, text) => {
-        const header = btn && btn.closest ? btn.closest('.code-header') : null;
-        if (!header) return;
-        let box = header.querySelector('.validate-result');
-        if (!box) {
-            box = document.createElement('div');
-            box.className = 'validate-result';
-            header.appendChild(box);
-        }
+        const box = getResultBox(btn);
+        if (!box) return;
         box.className = 'validate-result ' + cls;
         box.textContent = text;
     };
+}
+
+function getResultBox(btn) {
+    const codeBlock = btn && btn.closest ? btn.closest('.code-block') : null;
+    if (!codeBlock) return null;
+    let box = codeBlock.nextElementSibling;
+    if (!box || !box.classList.contains('validate-result')) {
+        box = document.createElement('div');
+        box.className = 'validate-result';
+        codeBlock.insertAdjacentElement('afterend', box);
+    }
+    return box;
 }
 
 function buildImportFacts(preflight) {
@@ -266,7 +267,7 @@ function formatTiaResult(r) {
 
 function showTiaResult(r, options = {}) {
     const formatted = formatTiaResult(r || {});
-    if (tiaResultBtn) makeResultShower(tiaResultBtn)(formatted.kind === 'success' ? 'valid' : 'invalid', formatted.text);
+    if (tiaResultBtn) makeResultShower(tiaResultBtn)(formatted.kind === 'success' ? 'ok' : formatted.kind, formatted.text);
     outputPanel.push({
         kind: formatted.kind,
         title: options.outputTitle || '写入结果',

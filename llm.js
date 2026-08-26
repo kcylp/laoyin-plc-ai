@@ -175,6 +175,45 @@ function resolveModel(modelId, userId) {
 }
 
 // ---- 调用 LLM，流式返回 ----
+function chatTimeoutError() {
+    const error = new Error('AI 生成超时（180 秒未完成），请稍后重试');
+    error.code = 'AI_TIMEOUT';
+    return error;
+}
+
+function chatAbortError() {
+    const error = new Error('AI 生成已停止');
+    error.code = 'ABORT_ERR';
+    error.name = 'AbortError';
+    return error;
+}
+
+function composeChatSignal(signal, timeoutMs = 180000) {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    if (signal && typeof AbortSignal.any === 'function') {
+        const combined = AbortSignal.any([signal, timeoutSignal]);
+        return { signal: combined, cleanup: () => {}, isTimeout: () => timeoutSignal.aborted, isAborted: () => combined.aborted };
+    }
+    if (signal) {
+        const controller = new AbortController();
+        const forward = () => controller.abort(signal.reason || chatAbortError());
+        const timeout = () => controller.abort(chatTimeoutError());
+        if (signal.aborted) forward();
+        else signal.addEventListener('abort', forward, { once: true });
+        timeoutSignal.addEventListener('abort', timeout, { once: true });
+        return {
+            signal: controller.signal,
+            cleanup: () => {
+                signal.removeEventListener('abort', forward);
+                timeoutSignal.removeEventListener('abort', timeout);
+            },
+            isTimeout: () => timeoutSignal.aborted,
+            isAborted: () => controller.signal.aborted,
+        };
+    }
+    return { signal: timeoutSignal, cleanup: () => {}, isTimeout: () => timeoutSignal.aborted, isAborted: () => timeoutSignal.aborted };
+}
+
 async function streamChat({ modelId, userId, messages, onDelta, signal }) {
     const resolved = resolveModel(modelId, userId);
 
@@ -216,63 +255,77 @@ async function streamChat({ modelId, userId, messages, onDelta, signal }) {
         };
     }
 
-    const resp = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal
-    });
+    const abortState = composeChatSignal(signal);
+    let reader = null;
 
-    if (!resp.ok) {
-        let errMsg = `HTTP ${resp.status}`;
-        try {
-            const j = await resp.json();
-            errMsg = j.error?.message || j.message || errMsg;
-        } catch (e) { /* ignore */ }
-        throw new Error(formatProviderError(resolved.name, errMsg));
-    }
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: abortState.signal
+        });
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const data = trimmed.slice(5).trim();
-            if (data === '[DONE]') continue;
-
+        if (!resp.ok) {
+            let errMsg = `HTTP ${resp.status}`;
             try {
-                const parsed = JSON.parse(data);
-                const delta = resolved.wireApi === 'anthropic'
-                    ? (parsed.type === 'content_block_delta' ? parsed.delta?.text : null)
-                    : parsed.choices?.[0]?.delta?.content;
+                const j = await resp.json();
+                errMsg = j.error?.message || j.message || errMsg;
+            } catch (e) { /* ignore */ }
+            throw new Error(formatProviderError(resolved.name, errMsg));
+        }
 
-                if (delta) {
-                    fullText += delta;
-                    onDelta(delta);
-                }
+        reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
 
-                if (resolved.wireApi === 'anthropic' && parsed.type === 'error') {
-                    throw new Error(parsed.error?.message || 'Anthropic 流返回错误');
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data:')) continue;
+                const data = trimmed.slice(5).trim();
+                if (data === '[DONE]') continue;
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = resolved.wireApi === 'anthropic'
+                        ? (parsed.type === 'content_block_delta' ? parsed.delta?.text : null)
+                        : parsed.choices?.[0]?.delta?.content;
+
+                    if (delta) {
+                        fullText += delta;
+                        onDelta(delta);
+                    }
+
+                    if (resolved.wireApi === 'anthropic' && parsed.type === 'error') {
+                        throw new Error(parsed.error?.message || 'Anthropic 流返回错误');
+                    }
+                } catch (e) {
+                    if (e instanceof SyntaxError) continue;
+                    throw e;
                 }
-            } catch (e) {
-                if (e instanceof SyntaxError) continue;
-                throw e;
             }
         }
-    }
 
-    return fullText;
+        return fullText;
+    } catch (error) {
+        if (abortState.isTimeout()) throw chatTimeoutError();
+        if (abortState.isAborted() || error.name === 'AbortError' || error.code === 'ABORT_ERR') throw chatAbortError();
+        throw error;
+    } finally {
+        abortState.cleanup();
+        if (reader && abortState.isAborted()) {
+            try { await reader.cancel(); } catch { /* reader may already be closed */ }
+        }
+    }
 }
 
 function formatProviderError(providerName, rawMessage) {

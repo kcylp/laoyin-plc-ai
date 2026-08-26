@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="web/css/panels.css">
     <link rel="stylesheet" href="web/css/modals.css">
     <link rel="stylesheet" href="web/css/components.css">
+    <link rel="stylesheet" href="web/css/chat-content.css">
 </head>
 <body class="tia-portal-shell">
     <div class="tia-shell">
@@ -82,20 +83,34 @@
                     <div class="composer-side">
                         <label class="composer-scaffold" title="整工程模式：自然语言 → AI 生成工程 spec → 离线校验 → 一键建完整工程（新项目/硬件/变量表/编译）"><input type="checkbox" id="scaffoldMode"> 整工程</label>
                         <button class="tia-btn is-primary" id="sendButton" type="button"><span id="sendText">发送</span><span id="sendLoader" class="hidden">发送中</span></button>
+                        <button class="tia-btn is-ghost hidden" id="stopButton" type="button">停止生成</button>
                     </div>
+                </div>
+                <div class="tia-context-bar" id="contextBar">
+                    <span class="ctx-status" id="ctxStatus">
+                        <i class="tia-led is-idle" id="ctxLed"></i>
+                        <span id="ctxText">未连接博途 —— AI 将给出通用示例，地址需自行调整</span>
+                    </span>
+                    <span class="ctx-actions">
+                        <label class="composer-scaffold" title="开启后，本轮对话会把当前工程摘要和相关变量表发给 AI"><input type="checkbox" id="ctxAllow" checked> 允许把工程信息发给 AI</label>
+                        <label class="composer-scaffold" title="只在需要排障或全量核对变量时开启，本轮会把完整变量表发给 AI"><input type="checkbox" id="ctxAllVars"> 把变量表带给 AI</label>
+                        <button class="tia-btn is-ghost is-xs" id="ctxRefresh" type="button">刷新</button>
+                        <button class="tia-btn is-ghost is-xs" id="ctxDetail" type="button">详情</button>
+                    </span>
+                    <div class="ctx-detail hidden" id="ctxDetailBox"></div>
                 </div>
             </main>
             <aside class="tia-inspector" id="inspector" aria-label="状态检查器"></aside>
         </div>
 
-        <section class="tia-output collapsed" id="outputPanel" aria-live="polite">
-            <button class="output-head" id="outputToggle" type="button" aria-expanded="false">
+        <section class="tia-output" id="outputPanel" aria-live="polite">
+            <button class="output-head" id="outputToggle" type="button" aria-expanded="true">
                 <span id="outputTitle">输出 (0)</span>
                 <span class="spacer"></span>
-                <span id="outputToggleText">展开</span>
+                <span id="outputToggleText">收起</span>
             </button>
             <div class="output-list" id="outputList"></div>
-            <div class="output-actions"><button class="tia-btn is-ghost is-sm" id="outputClear" type="button">清空输出</button></div>
+            <div class="output-actions"><button class="tia-btn is-ghost is-sm" id="outputClear" type="button">清空输出</button><button class="tia-btn is-ghost is-sm" id="outputCopy" type="button">复制全部</button><button class="tia-btn is-ghost is-sm" id="outputErrorsOnly" type="button">只看错误</button></div>
         </section>
         <footer class="tia-statusbar">
             <span class="tia-status-item"><i class="tia-led is-ok" id="stLed"></i><span id="stState">就绪</span></span>
@@ -103,6 +118,7 @@
             <span class="tia-status-item">语言 <b id="stLang">SCL</b></span>
             <span class="tia-status-item">模型 <b id="stModel">—</b></span>
             <span class="tia-status-item">XSD <b id="stXsd">—</b></span>
+            <span class="tia-status-item">博途 <i class="tia-led is-idle" id="stTiaLed"></i><b id="stTiaOp">未连接</b><span id="stTiaQueue"></span></span>
             <span class="tia-status-item is-right">耗时 <b id="stElapsed">0.0s</b></span>
         </footer>
     </div>

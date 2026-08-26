@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const SYSTEM_PROMPTS = require('../prompts');
 const { resolvePromptContent } = require('../prompt-router');
+const { createProjectContextService } = require('../lib/project-context');
 
 const VALID_LANGS = ['lad', 'fbd', 'scl', 'stl', 'graph'];
 const SERIES_LANGS = {
@@ -21,7 +22,20 @@ const SCHEMA_COUNT_CACHED = (() => {
 })();
 
 module.exports = function createChatRoutes(deps) {
-    const { db, authenticateToken, getUserById, getCurrentModel, setCurrentModel, llmStream, listUserModels, registrationApprovalRequired } = deps;
+    const { db, authenticateToken, getUserById, getCurrentModel, setCurrentModel, llmStream, listUserModels, registrationApprovalRequired, enqueueTiaOp, mcpEnsureAttached, parseBlocksFromTree } = deps;
+    const projectContext = createProjectContextService({
+        enqueueTiaOp,
+        mcpEnsureAttached,
+        parseBlocksFromTree,
+        getWriteRevision: (userId) => {
+            try {
+                const row = db.prepare('SELECT COALESCE(MAX(id), 0) AS revision FROM tia_write_history WHERE user_id = ?').get(userId);
+                return row ? row.revision : 0;
+            } catch {
+                return 0;
+            }
+        }
+    });
     const router = express.Router();
 
 router.get('/workbench/status', authenticateToken, (req, res) => {
@@ -89,11 +103,48 @@ router.post('/use-question', authenticateToken, (req, res) => {
 });
 
 // ---------- 路由: AI 对话（后端代理，流式） ----------
-const conversationStore = new Map(); // userId -> [{role, content}]
 const MAX_HISTORY = 30;
 
+function normalizeHistory(messages) {
+    if (!Array.isArray(messages)) return [];
+    return messages
+        .filter(item => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+        .map(item => ({ role: item.role, content: item.content }))
+        .slice(-MAX_HISTORY);
+}
+
+function loadConversation(userId) {
+    try {
+        const row = db.prepare('SELECT messages_json FROM conversations WHERE user_id = ?').get(userId);
+        if (!row || !row.messages_json) return [];
+        return normalizeHistory(JSON.parse(row.messages_json));
+    } catch {
+        return [];
+    }
+}
+
+function saveConversation(userId, messages) {
+    const normalized = normalizeHistory(messages);
+    db.prepare(`
+        INSERT INTO conversations (user_id, messages_json, updated_at)
+        VALUES (?, ?, datetime('now','localtime'))
+        ON CONFLICT(user_id) DO UPDATE SET
+            messages_json = excluded.messages_json,
+            updated_at = excluded.updated_at
+    `).run(userId, JSON.stringify(normalized));
+    return normalized;
+}
+
+function clearConversation(userId) {
+    db.prepare('DELETE FROM conversations WHERE user_id = ?').run(userId);
+}
+
+router.get('/chat/history', authenticateToken, (req, res) => {
+    res.json({ success: true, messages: loadConversation(req.user.id) });
+});
+
 router.post('/chat', authenticateToken, async (req, res) => {
-    const { message, series, modelId } = req.body;
+    const { message, series, modelId, includeContext, projectContextEnabled, includeAllVariables } = req.body;
 
     if (!message || !message.trim()) return res.status(400).json({ success: false, message: '消息不能为空' });
     if (!['s200smart', 's1200', 's1500'].includes(series)) {
@@ -129,12 +180,50 @@ router.post('/chat', authenticateToken, async (req, res) => {
         });
     }
 
-    const history = conversationStore.get(req.user.id) || [];
+    let history = loadConversation(req.user.id);
+    if (Array.isArray(req.body.history)) {
+        history = normalizeHistory(req.body.history);
+    }
+    if (req.body.regenerate === true) {
+        if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].content === message) {
+            history = history.slice(0, -1);
+        } else {
+            while (history.length && history[history.length - 1].role !== 'user') history.pop();
+            if (history.length && history[history.length - 1].content === message) history.pop();
+        }
+    } else if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].content === message) {
+        history = history.slice(0, -1);
+    }
     const messages = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: systemPrompt }
+    ];
+
+    const contextEnabled = includeContext !== false && projectContextEnabled !== false;
+    let contextResult = {
+        prompt: '',
+        status: { enabled: false, connected: false, project: '', blockCount: 0, variableCount: 0, totalVars: 0, charCount: 0, tokenEstimate: 0 },
+        details: null
+    };
+    if (contextEnabled) {
+        try {
+            contextResult = await projectContext.getPromptContext({
+                userId: req.user.id,
+                message,
+                includeAllVariables: includeAllVariables === true
+            });
+            if (contextResult.prompt) {
+                messages.push({ role: 'system', content: contextResult.prompt });
+            }
+        } catch (e) {
+            console.error('项目上下文注入失败:', e.message);
+            contextResult.status = { ...contextResult.status, enabled: true, connected: false, error: e.message };
+        }
+    }
+
+    messages.push(
         ...history,
         { role: 'user', content: message }
-    ];
+    );
 
     // 设置 SSE 响应头
     res.setHeader('Content-Type', 'text/event-stream');
@@ -143,16 +232,33 @@ router.post('/chat', authenticateToken, async (req, res) => {
     res.flushHeaders();
 
     let fullText = '';
+    let responseFinished = false;
+    const abortController = new AbortController();
+    const abortOnClose = () => {
+        if (!responseFinished && !abortController.signal.aborted) {
+            abortController.abort(new Error('client closed'));
+        }
+    };
+    req.on('aborted', abortOnClose);
+    res.on('close', abortOnClose);
     const sendSSE = (type, data) => {
-        res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+        if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+    };
+
+    const finish = () => {
+        responseFinished = true;
+        req.off('aborted', abortOnClose);
+        res.off('close', abortOnClose);
+        if (!res.writableEnded) res.end();
     };
 
     try {
+        sendSSE('context', { projectContext: contextResult.status, details: contextResult.details });
         const full = await llmStream({
             modelId: selectedModel.id,
             userId: req.user.id,
             messages,
-            signal: req.signal,
+            signal: abortController.signal,
             onDelta: (delta) => {
                 fullText += delta;
                 sendSSE('delta', { content: delta });
@@ -160,24 +266,52 @@ router.post('/chat', authenticateToken, async (req, res) => {
         });
 
         // 更新对话历史
+        if (full && full !== fullText) fullText = full;
         history.push({ role: 'user', content: message });
         history.push({ role: 'assistant', content: fullText });
-        if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
-        conversationStore.set(req.user.id, history);
+        saveConversation(req.user.id, history);
 
         sendSSE('done', { content: fullText });
-        res.end();
+        finish();
     } catch (error) {
-        console.error('AI对话错误:', error.message);
-        sendSSE('error', { message: error.message });
-        res.end();
+        const aborted = abortController.signal.aborted || error.name === 'AbortError' || error.code === 'ABORT_ERR' || error.code === 'AI_TIMEOUT';
+        if (aborted) {
+            if (abortController.signal.aborted && error.code !== 'AI_TIMEOUT') {
+                history.push({ role: 'user', content: message });
+                history.push({ role: 'assistant', content: '[用户已中断]' });
+                saveConversation(req.user.id, history);
+            }
+            sendSSE('aborted', { message: error.code === 'AI_TIMEOUT' ? error.message : 'AI 生成已停止' });
+        } else {
+            console.error('AI对话错误:', error.message);
+            sendSSE('error', { message: error.message });
+        }
+        finish();
     }
 });
 
 
+// ---------- 路由: 项目上下文（TASK-009） ----------
+router.get('/chat/context', authenticateToken, (req, res) => {
+    res.json({ success: true, context: projectContext.getStatus(req.user.id) });
+});
+
+router.post('/chat/context/refresh', authenticateToken, async (req, res) => {
+    try {
+        const result = await projectContext.refresh({
+            userId: req.user.id,
+            message: String(req.body && req.body.message || ''),
+            includeAllVariables: !!(req.body && req.body.includeAllVariables)
+        });
+        res.json({ success: true, context: result.status, details: result.details, summary: result.prompt });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '刷新上下文失败: ' + e.message });
+    }
+});
+
 // ---------- 路由: 清空对话 ----------
 router.post('/chat/clear', authenticateToken, (req, res) => {
-    conversationStore.delete(req.user.id);
+    clearConversation(req.user.id);
     res.json({ success: true, message: '对话已清空' });
 });
 

@@ -139,6 +139,33 @@ test('Connect-YinPortal scans all running TIA instances for an open project', ()
     assert.doesNotMatch(connectBody, /\$procs\s*\|\s*Select-Object\s+-First\s+1/);
 });
 
+test('Connect-YinPortal preserves Attach failures and distinguishes security rejection', () => {
+    const writeModulePath = path.join(ROOT, 'engine', 'src', 'EngineerYin.Write.psm1');
+    const writeModule = fs.readFileSync(writeModulePath, 'utf8');
+    const connectStart = writeModule.indexOf('function Connect-YinPortal');
+    const connectEnd = writeModule.indexOf('function Disconnect-YinPortal', connectStart);
+    const connectBody = writeModule.slice(connectStart, connectEnd);
+
+    assert.match(connectBody, /\$script:LastAttachError\s*=\s*\$null/);
+    assert.match(connectBody, /\$script:LastAttachError\s*=\s*\$_\.Exception/);
+    assert.match(connectBody, /EngineeringSecurityException|AllowList/);
+    assert.match(connectBody, /Siemens TIA Openness/);
+    assert.match(connectBody, /原始错误/);
+});
+
+test('PowerShell bridge uses an absolute executable, Bypass, and SID-based group checks', () => {
+    const bridgeSrc = fs.readFileSync(path.join(ROOT, 'engineer-yin-bridge.js'), 'utf8');
+    const resolved = bridge.resolvePowerShellPath({ SystemRoot: 'C:\\Windows' });
+    assert.doesNotMatch(bridgeSrc, /const PS1 = ['"]powershell\.exe['"]/);
+    assert.equal(path.isAbsolute(resolved), true);
+    assert.match(resolved, /WindowsPowerShell[\\/]v1\.0[\\/]powershell\.exe$/i);
+    assert.match(bridgeSrc, /fs\.existsSync\(PS1\)/);
+    assert.match(bridgeSrc, /-ExecutionPolicy['"], ['"]Bypass/);
+    assert.match(bridgeSrc, /WindowsPrincipal/);
+    assert.match(bridgeSrc, /\.IsInRole\(\$sid\)/);
+    assert.doesNotMatch(bridgeSrc, /net localgroup \"Siemens TIA Openness\"/);
+});
+
 test('one-shot validation scripts stop shared engine clients after S7DCL imports', () => {
     const bridgeSrc = fs.readFileSync(path.join(ROOT, 'engineer-yin-bridge.js'), 'utf8');
     assert.match(bridgeSrc, /function stopSharedEngineClients/);

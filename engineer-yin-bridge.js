@@ -13,7 +13,14 @@ const os = require('os');
 const path = require('path');
 const { getSharedYinWorkerClient } = require('./yin-worker-client');
 
-const PS1 = 'powershell.exe';
+function resolvePowerShellPath(env = process.env) {
+    const windowsRoot = env.SystemRoot || env.WINDIR || 'C:\\Windows';
+    return path.resolve(env.YIN_POWERSHELL_EXE || path.join(
+        windowsRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'
+    ));
+}
+
+const PS1 = resolvePowerShellPath();
 
 function resolveYinRoot() {
     if (process.env.YIN_ROOT) return process.env.YIN_ROOT;
@@ -86,6 +93,9 @@ function extractFragments(xmlContent, root) {
 // 调 PowerShell 跑 EngineerYin 的 Test-YinFlgNet
 function runYinValidate(fragment, schemaFile) {
     return new Promise((resolve) => {
+        if (!fs.existsSync(PS1)) {
+            return resolve({ valid: false, errors: [{ line: 0, pos: 0, message: `PowerShell 不存在: ${PS1}` }] });
+        }
         const tmpFile = path.join(
             os.tmpdir(),
             `yin_${Date.now()}_${Math.random().toString(36).slice(2)}.xml`
@@ -110,7 +120,7 @@ try {
     [pscustomobject]@{ Valid=$false; Errors=@([pscustomobject]@{ Line=0; Pos=0; Message=$_.Exception.Message }) } | ConvertTo-Json -Depth 5 -Compress
 }`;
 
-        execFile(PS1, ['-NoProfile', '-NonInteractive', '-Command', script], {
+        execFile(PS1, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
             timeout: 45000,
             maxBuffer: 20 * 1024 * 1024,
             windowsHide: true,
@@ -352,6 +362,9 @@ const validateFlgNetXml = (xml) => validatePlcXml(xml, 'lad');
 // 博途 Openness 环境自检（走引擎的注册表版本探测，不写死 V21）
 function checkOpennessEnvironment() {
     return new Promise((resolve) => {
+        if (!fs.existsSync(PS1)) {
+            return resolve({ ok: false, moduleFound: false, message: `PowerShell 不存在: ${PS1}` });
+        }
         const script = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
@@ -374,8 +387,11 @@ try {
     $result.Message = $_.Exception.Message
 }
 try {
-    $members = (net localgroup "Siemens TIA Openness") 2>$null
-    $result.InGroup = [bool]($members -match [regex]::Escape($env:USERNAME))
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+    $group = New-Object System.Security.Principal.NTAccount($env:COMPUTERNAME, 'Siemens TIA Openness')
+    $sid = $group.Translate([System.Security.Principal.SecurityIdentifier]).Value
+    $result.InGroup = $principal.IsInRole($sid)
 } catch { }
 if ($result.OpennessPath) {
     try {
@@ -391,7 +407,7 @@ if ($result.OpennessPath) {
 }
 [pscustomobject]$result | ConvertTo-Json -Depth 3 -Compress`;
 
-        execFile(PS1, ['-NoProfile', '-NonInteractive', '-Command', script], {
+        execFile(PS1, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
             timeout: 60000,
             maxBuffer: 10 * 1024 * 1024,
             windowsHide: true,
@@ -435,6 +451,9 @@ function writeYinTempFile(xmlContent, kind) {
 
 function runYinImportScriptLegacy(mode, tmpFile, overwrite, kind = 'xml') {
     return new Promise((resolve) => {
+        if (!fs.existsSync(PS1)) {
+            return resolve({ ok: false, stage: 'error', message: `PowerShell 不存在: ${PS1}` });
+        }
         const script = path.join(YIN_ROOT, 'src', 'yin_import.ps1');
         if (!fs.existsSync(script)) {
             return resolve({ ok: false, stage: 'error', message: `导入脚本缺失: ${script}` });
@@ -754,6 +773,7 @@ module.exports = {
     detectPayloadKind,
     normalizeImportLanguage,
     detectLangFromXml,
+    resolvePowerShellPath,
     checkOpennessEnvironment,
     stopSharedEngineClients,
     runYinImportScript,

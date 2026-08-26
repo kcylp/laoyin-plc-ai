@@ -9,6 +9,9 @@ const crypto = require('crypto');
 const ALGO = 'aes-256-gcm';
 
 function deriveKey(secret) {
+    if (typeof secret !== 'string' || secret.length < 32) {
+        throw new Error('安全密钥未配置或强度不足');
+    }
     return crypto.createHash('sha256').update(String(secret)).digest();
 }
 

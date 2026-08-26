@@ -1,6 +1,7 @@
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
+const { sanitizeDiagnostic } = require('./lib/sanitize');
 
 const APP_ROOT = process.env.APP_ROOT || __dirname;
 const DEFAULT_ENGINE_ROOT = process.env.YIN_ROOT || path.join(APP_ROOT, 'engine');
@@ -22,9 +23,17 @@ function commandExists(command) {
     return true;
 }
 
+function defaultPowerShellPath() {
+    if (process.env.YIN_POWERSHELL_EXE) {
+        return path.resolve(process.env.YIN_POWERSHELL_EXE);
+    }
+    const windowsRoot = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows';
+    return path.join(windowsRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+}
+
 class YinWorkerClient {
     constructor(options = {}) {
-        this.exePath = options.exePath || process.env.YIN_POWERSHELL_EXE || 'powershell.exe';
+        this.exePath = options.exePath || defaultPowerShellPath();
         this.engineRoot = options.engineRoot || DEFAULT_ENGINE_ROOT;
         this.workerScript = options.workerScript || path.join(this.engineRoot, 'src', 'yin_worker.ps1');
         this.args = options.args || [
@@ -202,7 +211,11 @@ class YinWorkerClient {
         if (this.ready) return;
         const result = await this._request('ping', {}, Math.min(this.requestTimeoutMs, 60000));
         if (!result || result.ok !== true || result.pong !== true) {
-            throw new Error('Yin worker ping 失败');
+            const recentStderr = sanitizeDiagnostic(this.stderrLog.slice(-20));
+            const detail = recentStderr.length ? `\n${recentStderr.join('\n')}` : '';
+            const error = new Error('Yin worker ping 失败' + detail);
+            error.recentStderr = recentStderr;
+            throw error;
         }
         this.project = result.project || '';
         this.tiaVersion = result.tiaVersion || '';

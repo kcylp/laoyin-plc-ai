@@ -6,8 +6,16 @@ module.exports = function createAuthRoutes(deps) {
     const { db, authenticateToken, getUserByUsername, getUserById, sendMail, htmlEscape, registrationApprovalRequired, SITE_URL, ADMIN_KEY, ADMIN_EMAIL, JWT_SECRET } = deps;
     const router = express.Router();
 
+function asyncHandler(handler) {
+    return (req, res, next) => Promise.resolve(handler(req, res, next)).catch((error) => {
+        console.error(`认证接口 ${req.method} ${req.path} 失败:`, error.message);
+        if (res.headersSent) return next(error);
+        return res.status(503).json({ success: false, message: '认证或邮件服务暂时不可用，请稍后重试' });
+    });
+}
+
 // ---------- 路由: 注册（默认本机直接可用；需要企业审批时显式开启） ----------
-router.post('/register', async (req, res) => {
+router.post('/register', asyncHandler(async (req, res) => {
     const { username, password, email } = req.body;
 
     if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
@@ -64,10 +72,10 @@ router.post('/register', async (req, res) => {
         success: true,
         message: '注册成功！您的账号需管理员审批后才能登录，审批结果会通过邮件通知您。'
     });
-});
+}));
 
 // ---------- 路由: 登录（检查审批状态） ----------
-router.post('/login', async (req, res) => {
+router.post('/login', asyncHandler(async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
 
@@ -92,10 +100,10 @@ router.post('/login', async (req, res) => {
         token,
         user: { id: user.id, username: user.username, email: user.email }
     });
-});
+}));
 
 // ---------- 路由: 审批（邮件链接直达） ----------
-router.get('/approve', async (req, res) => {
+router.get('/approve', asyncHandler(async (req, res) => {
     const { userId, action, adminKey } = req.query;
     if (adminKey !== ADMIN_KEY) return res.send('<h2>审批失败：管理员密钥错误</h2>');
     if (!userId || !['approve', 'reject'].includes(action)) return res.send('<h2>审批失败：参数错误</h2>');
@@ -123,7 +131,7 @@ router.get('/approve', async (req, res) => {
             <a href="${SITE_URL}/admin.html" style="margin-top:20px;display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none">返回管理后台</a>
         </div>
     `);
-});
+}));
 
 // ---------- 路由: 验证令牌 ----------
 router.get('/verify', authenticateToken, (req, res) => {

@@ -42,7 +42,10 @@ test('launcher keeps the customer message private and writes bounded sanitized d
     const launcher = read('work/green-build/launcher.cs');
     assert.match(launcher, /BuildSafeDiagnostic\s*\(/);
     assert.match(launcher, /SanitizeDiagnostic\s*\(/);
-    assert.match(launcher, /Fail\(root,\s*FriendlyFailure\(detail,\s*exitCode\),\s*BuildSafeDiagnostic/s);
+    assert.match(launcher, /BoundedProcessOutput\(200,\s*64 \* 1024\)/);
+    assert.match(launcher, /BeginOutputReadLine\(\)/);
+    assert.match(launcher, /BeginErrorReadLine\(\)/);
+    assert.doesNotMatch(launcher, /StandardError\.ReadToEnd\(\)/);
     assert.match(launcher, /诊断时间/);
     assert.match(launcher, /启动器版本/);
     assert.match(launcher, /Windows/);
@@ -51,8 +54,31 @@ test('launcher keeps the customer message private and writes bounded sanitized d
     assert.match(launcher, /目录写入/);
     assert.match(launcher, /8192/);
     assert.match(launcher, /node:internal/);
-    assert.match(launcher, /API[_-]?KEY|ADMIN_KEY|JWT_SECRET/i);
+    assert.match(launcher, /sk-\[已隐藏\]/);
+    assert.match(launcher, /LAUNCHER_SHUTDOWN_TOKEN/);
+    assert.match(launcher, /SMTP_PASS/);
+    assert.match(launcher, /IMAP_PASS/);
+    assert.match(launcher, /\*\*\*@\*\*\*/);
     assert.match(launcher, /Regex/);
     assert.match(launcher, /后端未提供错误详情/);
-    assert.match(launcher, /File\.WriteAllText\(Path\.Combine\(root,\s*"启动日志\.txt"\),\s*diagnostic/);
+    assert.match(launcher, /LogDirectory\s*\(/);
+    assert.match(launcher, /启动日志-/);
+    assert.match(launcher, /PruneLaunchLogs\(dir,\s*5\)/);
+});
+
+test('launcher hardens health checks and process lifetime for the green package', () => {
+    const launcher = read('work/green-build/launcher.cs');
+    assert.match(launcher, /CreateJobObject/);
+    assert.match(launcher, /AssignProcessToJobObject/);
+    assert.match(launcher, /JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE/);
+    assert.match(launcher, /Job Object 子进程回收不可用，已降级为常规进程清理/);
+    assert.match(launcher, /while \(elapsed\.ElapsedMilliseconds < 30000\)/);
+    assert.match(launcher, /正在启动服务/);
+    assert.match(launcher, /正在初始化数据库/);
+    assert.match(launcher, /正在预热博途连接/);
+    assert.match(launcher, /DeserializeObject\(body\)/);
+    assert.match(launcher, /ReadBool\(data, "ok"\) && ReadBool\(data, "trial"\)/);
+    assert.doesNotMatch(launcher, /Contains\("\\"trial\\":true"\)/);
+    assert.match(launcher, /打开日志文件夹/);
+    assert.match(launcher, /explorer\.exe/);
 });

@@ -1,35 +1,60 @@
 const express = require('express');
-const { checkOpennessEnvironment } = require('../engineer-yin-bridge');
-const { getSharedClient } = require('../tia-mcp-client');
+const { runDiagnose, exportDiagnosticPackage } = require('../lib/env-diagnose');
+const { getSharedClient, TiaMcpClient } = require('../tia-mcp-client');
 
 module.exports = function createAdminRoutes(deps) {
-    const { db, checkAdmin, getUserById, getUserByUsername, sendMail, htmlEscape } = deps;
+    const {
+        db,
+        checkAdmin = () => false,
+        getUserById = () => null,
+        getUserByUsername = () => null,
+        sendMail = async () => {},
+        htmlEscape = value => String(value),
+        authenticateToken = (req, res) => res.status(500).json({ success: false, message: '鉴权中间件未配置' }),
+        localOnly = (req, res) => res.status(500).json({ success: false, message: '本机限制中间件未配置' }),
+        enqueueTiaOp = fn => fn(),
+        getMcpClient = getSharedClient,
+        envDiagnoseDeps = {},
+    } = deps || {};
     const router = express.Router();
 
+async function runMaybeQueued(deep, fn) {
+    return deep ? enqueueTiaOp(fn) : fn();
+}
+
 // ---------- 路由: 环境自检（首次引导用） ----------
-router.get('/env-check', async (req, res) => {
+router.get('/env-check', authenticateToken, localOnly, async (req, res) => {
     try {
-        const env = await checkOpennessEnvironment();
-        // 补上模型供应状态：查有没有可用的供应商/模型
-        let aiReady = false;
-        let providerCount = 0;
-        try {
-            providerCount = db.prepare('SELECT COUNT(*) c FROM ai_providers').get().c;
-            const modelCount = db.prepare('SELECT COUNT(*) c FROM ai_models WHERE enabled=1').get().c;
-            aiReady = modelCount > 0;
-        } catch (e) { /* 表可能不存在 */ }
-        // 邮件审批：SMTP 授权码配了才算可用（IMAP 复用同一授权码）
-        const mailConfigured = !!(process.env.SMTP_PASS || process.env.IMAP_PASS);
-        // 博途在线引擎(vendored MCP 运行时):只查 exe 在不在,不启动(启动很慢)
-        const mcpAvailable = getSharedClient().available();
-        const issues = [];
-        if (!env.opennessPath) issues.push('博途未检测');
-        if (!env.inOpennessGroup) issues.push('未加入 Openness 组');
-        if (!aiReady) issues.push('AI 未配置');
-        if (!env.moduleFound) issues.push('引擎缺失');
-        if (!mcpAvailable) issues.push('在线引擎未集成');
-        const healthScore = Math.max(0, 100 - issues.length * 20);
-        res.json({ success: true, ...env, aiReady, providerCount, mailConfigured, mcpAvailable, healthScore, issues });
+        const deep = req.query.deep === '1' || req.query.deep === 'true';
+        const result = await runMaybeQueued(deep, () => runDiagnose({ deep, deps: { db, ...envDiagnoseDeps } }));
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+router.post('/diagnose/export', authenticateToken, localOnly, async (req, res) => {
+    try {
+        const deep = req.body && req.body.deep === true;
+        const result = await runMaybeQueued(deep, () => exportDiagnosticPackage({ deep, deps: { db, ...envDiagnoseDeps } }));
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+router.post('/env-check/fix', authenticateToken, localOnly, async (req, res) => {
+    if (!req.body || req.body.id !== 'openness-group') {
+        return res.status(400).json({ success: false, message: '不支持的自动修复项' });
+    }
+    try {
+        const result = await enqueueTiaOp(async () => {
+            const client = getMcpClient();
+            await client.ensureReady();
+            const response = await client.callTool('EnsureOpennessUserGroup', {}, 60000);
+            return TiaMcpClient.jsonOf(response) || response;
+        });
+        res.json({ success: true, id: 'openness-group', result });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }

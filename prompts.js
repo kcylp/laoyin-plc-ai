@@ -1065,6 +1065,24 @@ END_FUNCTION_BLOCK
 4. 若只需要方案，请不要输出 XML，只输出可读的工程说明。`
 };
 
+// ========== 项目上下文硬约束段（TASK-009: LLM 行为规则）==========
+const PROJECT_CONTEXT_CONSTRAINTS = `
+【工程上下文约束】
+当对话中出现【当前博途工程】段时，说明你已经获得了用户工程的真实信息。请遵守：
+1. 只能引用【变量表】中真实存在的符号和地址；需要新建变量时，必须在回答开头单独列出「需新建变量表」，不要在代码里凭空编造。
+2. 块名不得与【已有程序块】重名，除非用户明确说要覆盖。
+3. PLC型号与固件已给出，不要使用该型号不支持的指令。
+4. 如果【当前博途工程】段为空或显示「未连接博途」，必须在回答开头提醒用户先连接博途，并说明给出的地址是示例、需要按实际工程调整。
+5. 对话过程中引用变量时，请说明其来源（变量表/地址/注释），方便用户核对。
+`;
+
+// 为每个 series_key 追加约束段
+for (const key of Object.keys(SYSTEM_PROMPTS)) {
+    if (key.includes('_') && typeof SYSTEM_PROMPTS[key] === 'string') {
+        SYSTEM_PROMPTS[key] += PROJECT_CONTEXT_CONSTRAINTS;
+    }
+}
+
 // 兼容旧键：server 端回退链会用到 {series} 旧键，直接指向新键内容
 SYSTEM_PROMPTS.s200smart = SYSTEM_PROMPTS.s200smart_stl;
 SYSTEM_PROMPTS.s1200 = SYSTEM_PROMPTS.s1200_scl;

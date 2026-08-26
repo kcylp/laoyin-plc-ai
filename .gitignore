@@ -113,9 +113,17 @@ plc_assistant.db
 
 # 运行时数据、备份与日志（禁止提交）
 work/db-backups/
+work/probe/
+work/s7dcl-probe/
+work/s7dcl-roundtrip-in/
+work/screenshots/
+work/browser-verify/
+work/g-ux-verify/
+work/ux-verify/
 work/runtime/
 work/*.log
 work/e2e-ai-*.txt
+secrets.json
 
 # 缓存构建产物与 SEA 工具链（不提交，可由 build-green.ps1 重新生成）
 work/green-build/stage/

@@ -1,5 +1,5 @@
 const MAX_ROWS = 50;
-const state = { rows: [] };
+const state = { rows: [], errorsOnly: false };
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -11,6 +11,8 @@ function elements() {
         toggleText: document.getElementById('outputToggleText'),
         list: document.getElementById('outputList'),
         clear: document.getElementById('outputClear'),
+        copy: document.getElementById('outputCopy'),
+        errorsOnly: document.getElementById('outputErrorsOnly'),
     };
 }
 
@@ -20,11 +22,13 @@ function render() {
     if (el.title) el.title.textContent = `输出 (${state.rows.length})`;
     if (el.toggleText) el.toggleText.textContent = el.root.classList.contains('collapsed') ? '展开' : '收起';
     if (el.toggle) el.toggle.setAttribute('aria-expanded', String(!el.root.classList.contains('collapsed')));
-    el.list.innerHTML = state.rows.map((row) => {
+    const rows = state.errorsOnly ? state.rows.filter(row => ['error', 'warn'].includes(row.kind)) : state.rows;
+    el.list.innerHTML = rows.map((row) => {
         const detail = row.detail === undefined ? '' : `<pre>${esc(JSON.stringify(row.detail, null, 2))}</pre>`;
         const ms = Number.isFinite(row.ms) ? `<span>${Math.round(row.ms)}ms</span>` : '';
         return `<details class="output-row is-${esc(row.kind || 'info')}"><summary><b>${esc(row.title)}</b>${ms}</summary>${row.body ? `<div>${esc(row.body)}</div>` : ''}${detail}</details>`;
     }).join('');
+    if (el.errorsOnly) el.errorsOnly.textContent = state.errorsOnly ? '显示全部' : '只看错误';
 }
 
 function flash() {
@@ -38,8 +42,10 @@ function flash() {
 
 export const outputPanel = {
     push(row = {}) {
-        state.rows.unshift({ kind: row.kind || 'info', title: row.title || '输出', body: row.body || '', detail: row.detail, ms: row.ms });
+        const kind = row.kind || 'info';
+        state.rows.unshift({ kind, title: row.title || '输出', body: row.body || '', detail: row.detail, ms: row.ms });
         state.rows = state.rows.slice(0, MAX_ROWS);
+        if (kind === 'error' || kind === 'warn') this.expand();
         render();
         flash();
     },
@@ -65,6 +71,19 @@ export const outputPanel = {
         state.rows = [];
         render();
     },
+    copyAll() {
+        const text = state.rows.map(row => {
+            const detail = row.detail === undefined ? '' : '\n' + JSON.stringify(row.detail, null, 2);
+            return `[${row.kind}] ${row.title}\n${row.body || ''}${detail}`;
+        }).join('\n\n');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(() => {});
+        }
+    },
+    toggleErrorsOnly() {
+        state.errorsOnly = !state.errorsOnly;
+        render();
+    },
     count() {
         return state.rows.length;
     },
@@ -78,6 +97,15 @@ export const outputPanel = {
             el.clear.dataset.bound = '1';
             el.clear.addEventListener('click', () => outputPanel.clear());
         }
+        if (el.copy && !el.copy.dataset.bound) {
+            el.copy.dataset.bound = '1';
+            el.copy.addEventListener('click', () => outputPanel.copyAll());
+        }
+        if (el.errorsOnly && !el.errorsOnly.dataset.bound) {
+            el.errorsOnly.dataset.bound = '1';
+            el.errorsOnly.addEventListener('click', () => outputPanel.toggleErrorsOnly());
+        }
+        outputPanel.expand();
         render();
     },
 };

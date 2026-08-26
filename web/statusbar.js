@@ -11,6 +11,7 @@ export const statusbarMethods = {
         this.messagesContainer = document.getElementById('messages');
         this.userInput = document.getElementById('userInput');
         this.sendButton = document.getElementById('sendButton');
+        this.stopButton = document.getElementById('stopButton');
         this.sendText = document.getElementById('sendText');
         this.sendLoader = document.getElementById('sendLoader');
         this.seriesButtons = document.querySelectorAll('[data-series]');
@@ -24,6 +25,7 @@ export const statusbarMethods = {
 
     bindEvents() {
         this.sendButton.addEventListener('click', () => this.sendMessage());
+        if (this.stopButton) this.stopButton.addEventListener('click', () => this.stopGenerating());
         this.userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -112,6 +114,7 @@ export const statusbarMethods = {
         this.sendButton.disabled = loading;
         this.sendText.classList.toggle('hidden', loading);
         this.sendLoader.classList.toggle('hidden', !loading);
+        if (this.stopButton) this.stopButton.classList.toggle('hidden', !loading);
     },
 
     startTimer() {
@@ -135,6 +138,25 @@ export const statusbarMethods = {
     updateTimerDisplay() {
         const elapsed = document.getElementById('stElapsed');
         if (elapsed) elapsed.textContent = `${this.timerSeconds.toFixed(1)}s`;
+    },
+
+    updateTiaQueueStatus(status = {}) {
+        const queue = status.queue || {};
+        const current = queue.current || null;
+        const pendingCount = Number(queue.pendingCount || 0);
+        const available = status.available !== false && status.success !== false;
+        const ready = !!(status.running && status.initialized);
+        const led = document.getElementById('stTiaLed');
+        const op = document.getElementById('stTiaOp');
+        const q = document.getElementById('stTiaQueue');
+        if (led) led.className = `tia-led ${ready ? 'is-ok' : (available ? 'is-idle' : 'is-err')}`;
+        if (op) {
+            if (current && current.label) op.textContent = `正在${current.label}`;
+            else if (ready) op.textContent = '已连接';
+            else if (status.prewarm === 'warming') op.textContent = '预热中';
+            else op.textContent = available ? '待连接' : '不可用';
+        }
+        if (q) q.textContent = pendingCount > 0 ? `（队列 ${pendingCount}）` : '';
     },
 
     scrollToBottom() {

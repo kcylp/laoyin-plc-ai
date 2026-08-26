@@ -13,7 +13,7 @@ namespace TiaMcpServer.ModelContextProtocol
     {
         public static string Recovery(Exception? ex)
         {
-            string m = Flatten(ex);
+            string m = McpErrorDetail.Format(ex);
             if (m.Length == 0) return "";
 
             // not connected
@@ -69,18 +69,5 @@ namespace TiaMcpServer.ModelContextProtocol
         private static bool Has(string haystack, string needle) =>
             haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
 
-        // Concatenate this exception's message with its inner chain so signatures buried in
-        // inner Openness exceptions are still matched.
-        private static string Flatten(Exception? ex)
-        {
-            if (ex == null) return "";
-            var sb = new System.Text.StringBuilder();
-            for (var e = ex; e != null; e = e.InnerException)
-            {
-                if (sb.Length > 0) sb.Append(" | ");
-                sb.Append(e.Message);
-            }
-            return sb.ToString();
-        }
     }
 }

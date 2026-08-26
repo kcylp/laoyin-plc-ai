@@ -27,6 +27,8 @@ namespace TiaMcpServer.ModelContextProtocol
 
         public static ILogger? Logger { get; set; }
 
+        private const string OpennessGroupName = "Siemens TIA Openness";
+
         public static Portal Portal
         {
             get
@@ -109,16 +111,24 @@ namespace TiaMcpServer.ModelContextProtocol
             }
         }
 
-        [McpServerTool(Name = "EnsureOpennessUserGroup"), Description("[L1][Portal]Ensure current Windows user is in TIA Openness user group (may prompt UI). Returns success=true when membership is OK.")]
+        [McpServerTool(Name = "EnsureOpennessUserGroup"), Description("[L1][Portal] Read-only check for current Windows user's TIA Openness group membership. Returns success=true when membership is OK; if false, returns the manual administrator command. Does not add users or prompt UAC.")]
         public static async Task<ResponseMessage> EnsureOpennessUserGroup()
         {
             try
             {
-                var ok = await Siemens.Openness.IsUserInGroup();
+                await Task.CompletedTask;
+                var ok = Siemens.Openness.IsUserInGroupNoFix();
                 return new ResponseMessage
                 {
-                    Message = ok ? "Openness user group OK" : "Openness user group NOT OK",
-                    Meta = new JsonObject { ["timestamp"] = DateTime.Now, ["success"] = ok }
+                    Message = ok ? "Openness user group OK" : "Openness user group NOT OK. " + OpennessManualFix(),
+                    Meta = new JsonObject
+                    {
+                        ["timestamp"] = DateTime.Now,
+                        ["success"] = ok,
+                        ["currentUser"] = CurrentWindowsUser(),
+                        ["targetGroup"] = OpennessGroupName,
+                        ["manualFix"] = OpennessManualFix()
+                    }
                 };
             }
             catch (Exception ex) when (ex is not McpException)
@@ -211,7 +221,7 @@ namespace TiaMcpServer.ModelContextProtocol
                     Transport = Environment.GetEnvironmentVariable("MCP_TRANSPORT") ?? "stdio",
                 };
 
-                try { env.OpennessGroupOk = await Siemens.Openness.IsUserInGroup(); }
+                try { env.OpennessGroupOk = Siemens.Openness.IsUserInGroupNoFix(); }
                 catch { env.OpennessGroupOk = false; }
 
                 var portalDto = new BootstrapPortal();
@@ -345,13 +355,13 @@ namespace TiaMcpServer.ModelContextProtocol
                 bool opennessOk;
                 try
                 {
-                    opennessOk = await Siemens.Openness.IsUserInGroup();
-                    Add("openness.user-group", "Siemens TIA Openness user group", opennessOk ? "pass" : "fail", opennessOk ? "Current user is in the Openness group." : "Current user is not in the Openness group, or membership could not be confirmed.");
+                    opennessOk = Siemens.Openness.IsUserInGroupNoFix();
+                    Add("openness.user-group", "Siemens TIA Openness user group", opennessOk ? "pass" : "fail", opennessOk ? "Current user is in the Openness group." : OpennessManualFix());
                 }
                 catch (Exception ex)
                 {
                     opennessOk = false;
-                    Add("openness.user-group", "Siemens TIA Openness user group", "fail", ex.Message);
+                    Add("openness.user-group", "Siemens TIA Openness user group", "fail", $"{ex.Message}. {OpennessManualFix()}");
                 }
 
                 if (inspectPortalProcesses)
@@ -441,6 +451,19 @@ namespace TiaMcpServer.ModelContextProtocol
             {
                 throw new McpException($"Unexpected error running capability self-test: {ex.Message}{McpHints.Recovery(ex)}", ex, McpErrorCode.InternalError);
             }
+        }
+
+        private static string CurrentWindowsUser()
+        {
+            var domain = Environment.UserDomainName;
+            var user = Environment.UserName;
+            return string.IsNullOrWhiteSpace(domain) ? user : $"{domain}\\{user}";
+        }
+
+        private static string OpennessManualFix()
+        {
+            var user = CurrentWindowsUser();
+            return $"Current Windows user: {user}. Target local group: {OpennessGroupName}. Manual fix: open an elevated PowerShell and run Add-LocalGroupMember -Group \"{OpennessGroupName}\" -Member \"{user}\"; then sign out/in and restart the AI client.";
         }
 
         [McpServerTool(Name = "RunOnlineMonitoringSafetySelfTest"), Description("[L0][Diagnostics]Run a static, read-only safety self-test for online monitoring guardrails. It does not connect to TIA Portal, open projects, modify watch tables, write PLC values, or expose forced-value operations.")]

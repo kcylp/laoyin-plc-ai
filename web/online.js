@@ -3,8 +3,6 @@ import { outputPanel } from './output-panel.js';
 import { scaffoldPanel } from './scaffold-panel.js';
 import { hardwarePanel } from './hardware-panel.js';
 
-const DANGEROUS_TOOL_RE = /download|delete|remove|force|stop|reset/i;
-
 export const onlineMethods = {
     setupOnlinePanel() {
         this.onlinePanel = document.getElementById('onlinePanel');
@@ -87,13 +85,49 @@ export const onlineMethods = {
             });
             return { status: r.status, json: await r.json().catch(() => null) };
         };
+        const queueBusyText = (status) => {
+            const queue = status && status.queue || {};
+            const depth = Number(queue.depth || 0);
+            if (!depth) return '';
+            const label = queue.current && queue.current.label ? queue.current.label : '博途操作';
+            return `已加入队列，前面还有 ${depth} 个操作（正在 ${label}）`;
+        };
+        const notifyQueueIfBusy = async (title) => {
+            const status = await this.refreshOnlineStatus().catch(() => this.lastTiaStatus || null);
+            const body = queueBusyText(status);
+            if (body) outputPanel.push({ kind: 'info', title, body });
+            return status;
+        };
+        const loadToolMetadata = async () => {
+            if (window.__ONLINE_TOOL_LIST && window.__ONLINE_TOOL_LIST.length) return window.__ONLINE_TOOL_LIST;
+            const response = await api('GET', '/api/tia/mcp/tools');
+            const tools = ((response.json && response.json.tools) || []).map(tool => ({
+                name: tool.name,
+                requiresConfirm: tool.requiresConfirm === true,
+            }));
+            window.__ONLINE_TOOL_LIST = tools;
+            return tools;
+        };
+        const confirmToolCall = (name) => confirmDialog({
+            level: 'danger',
+            title: '危险工具调用',
+            facts: [{ k: '工具', v: name }],
+            bullets: ['可能修改或停止现场 PLC/工程状态', '请确认当前工程、目标设备与现场安全条件', '该调用会进入后端危险操作确认链路'],
+            requireCheck: '我已确认现场安全',
+            confirmText: '确认执行'
+        });
 
         this.refreshOnlineStatus = async () => {
             try {
                 const r = await api('GET', '/api/tia/mcp/status');
                 const j = r.json || {};
+                if (r.status >= 400 || j.success === false) {
+                    j.available = false;
+                }
                 const ready = !!(j.available && j.running && j.initialized);
-                if (this.onlineLed) this.onlineLed.className = `tia-led ${ready ? 'is-ok' : 'is-idle'}`;
+                this.lastTiaStatus = j;
+                if (typeof this.updateTiaQueueStatus === 'function') this.updateTiaQueueStatus(j);
+                if (this.onlineLed) this.onlineLed.className = `tia-led ${ready ? 'is-ok' : (j.available ? 'is-idle' : 'is-err')}`;
                 if (sub) {
                     if (!j.available) sub.textContent = '未集成在线引擎';
                     else if (ready) sub.textContent = '在线引擎已连接 · ' + (j.serverInfo && j.serverInfo.version || '');
@@ -101,11 +135,38 @@ export const onlineMethods = {
                     else if (j.prewarm === 'failed') sub.textContent = '预热失败 · 待手动连接';
                     else sub.textContent = '在线引擎就绪 · 待连接';
                 }
-            } catch { /* 静默 */ }
+                return j;
+            } catch {
+                const fallback = { available: false, running: false, initialized: false, queue: { depth: 0, pendingCount: 0 } };
+                this.lastTiaStatus = fallback;
+                if (typeof this.updateTiaQueueStatus === 'function') this.updateTiaQueueStatus(fallback);
+                if (this.onlineLed) this.onlineLed.className = 'tia-led is-err';
+                if (sub) sub.textContent = '在线引擎状态暂时无法读取';
+                return fallback;
+            }
+        };
+
+        this.startTiaStatusPolling = () => {
+            if (this.tiaStatusPollStarted) return;
+            this.tiaStatusPollStarted = true;
+            const schedule = (delay) => {
+                clearTimeout(this.tiaStatusPollTimer);
+                this.tiaStatusPollTimer = setTimeout(poll, delay);
+            };
+            const poll = async () => {
+                if (document.hidden) { schedule(3000); return; }
+                const status = await this.refreshOnlineStatus();
+                schedule(status && status.queue && Number(status.queue.depth || 0) > 0 ? 1000 : 10000);
+            };
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) schedule(0);
+            });
+            schedule(0);
         };
 
         if (connectBtn) connectBtn.addEventListener('click', async () => {
-            showResult(true, '博途连接', '连接中…（冷启动可能需数分钟）');
+            await notifyQueueIfBusy('博途连接');
+            showResult(true, '博途连接', '阶段 1/3：请求已提交；阶段 2/3：等待博途队列；阶段 3/3：挂接当前工程。');
             connectBtn.disabled = true;
             try {
                 const r = await api('POST', '/api/tia/mcp/connect', {});
@@ -130,23 +191,25 @@ export const onlineMethods = {
                 catch { showResult(false, '参数错误', '参数不是合法 JSON'); return; }
             }
             let confirmed = false;
-            if (DANGEROUS_TOOL_RE.test(name)) {
-                const decision = await confirmDialog({
-                    level: 'danger',
-                    title: '危险工具调用',
-                    facts: [{ k: '工具', v: name }],
-                    bullets: ['可能修改或停止现场 PLC/工程状态', '请确认当前工程、目标设备与现场安全条件', '该调用会进入后端危险操作确认链路'],
-                    requireCheck: '我已确认现场安全',
-                    confirmText: '确认执行'
-                });
+            const tools = await loadToolMetadata().catch(() => []);
+            if (tools.find(tool => tool.name === name)?.requiresConfirm === true) {
+                const decision = await confirmToolCall(name);
                 if (!decision) return;
                 confirmed = true;
             }
             showResult(true, '在线工具调用', `调用 ${name} …`);
+            await notifyQueueIfBusy('在线工具调用');
             callBtn.disabled = true;
             try {
-                const r = await api('POST', '/api/tia/mcp/call', { name, args, timeoutMs: 120000, confirmed });
-                const j = r.json || {};
+                let r = await api('POST', '/api/tia/mcp/call', { name, args, timeoutMs: 120000, confirmed });
+                let j = r.json || {};
+                if (!j.success && j.dangerous && !confirmed) {
+                    const decision = await confirmToolCall(name);
+                    if (!decision) return;
+                    confirmed = true;
+                    r = await api('POST', '/api/tia/mcp/call', { name, args, timeoutMs: 120000, confirmed: true });
+                    j = r.json || {};
+                }
                 if (j.success) {
                     const body = j.json !== null && j.json !== undefined ? JSON.stringify(j.json, null, 2) : j.text;
                     showResult(true, `${name} 调用结果`, body || '（无返回内容）', j);
@@ -169,6 +232,7 @@ export const onlineMethods = {
             if (!addr) { showResult(false, '在线读值', '请输入 PLC IP 地址'); return; }
             const itemsInput = document.getElementById('odMonitorItems');
             const items = (itemsInput ? itemsInput.value.trim() : '') || 'M0.0';
+            await notifyQueueIfBusy('在线读值');
             showResult(true, '在线读值', '读取中…');
             monitorBtn.disabled = true;
             try {
@@ -202,7 +266,7 @@ export const onlineMethods = {
         });
         scaffoldPanel.init({ app: this });
         hardwarePanel.init({ app: this });
-        this.refreshOnlineStatus();
+        this.startTiaStatusPolling();
     },
 
     openToolListModal() {
@@ -243,7 +307,7 @@ export const onlineMethods = {
             fetch('/api/tia/mcp/tools', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } })
                 .then(r => r.json())
                 .then(j => {
-                    const list = ((j && j.tools) || []).map(t => ({ name: t.name, zh: zhByEn[t.name] || '' }));
+                    const list = ((j && j.tools) || []).map(t => ({ name: t.name, zh: zhByEn[t.name] || '', requiresConfirm: t.requiresConfirm === true }));
                     window.__ONLINE_TOOL_LIST = list;
                     render(list);
                 })
@@ -265,7 +329,12 @@ export const onlineMethods = {
             confirmText: '确认下载'
         });
         if (!decision) return;
-        outputPanel.push({ kind: 'warn', title: '下载到 PLC', body: '下载中…（CPU 可能短暂停机）' });
+        await this.refreshOnlineStatus();
+        const queueBody = (this.lastTiaStatus && this.lastTiaStatus.queue && Number(this.lastTiaStatus.queue.depth || 0) > 0)
+            ? `已加入队列，前面还有 ${Number(this.lastTiaStatus.queue.depth || 0)} 个操作（正在 ${this.lastTiaStatus.queue.current && this.lastTiaStatus.queue.current.label || '博途操作'}）`
+            : '';
+        if (queueBody) outputPanel.push({ kind: 'info', title: '下载到 PLC', body: queueBody });
+        outputPanel.push({ kind: 'warn', title: '下载到 PLC', body: '阶段 1/3：安全确认已完成；阶段 2/3：等待博途队列；阶段 3/3：执行下载（CPU 可能短暂停机）。' });
         try {
             const r = await fetch('/api/tia/mcp/call', {
                 method: 'POST',

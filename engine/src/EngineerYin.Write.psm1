@@ -17,6 +17,7 @@
 . (Join-Path $PSScriptRoot 'YinTiaDiscovery.ps1')
 
 $script:Net48 = ''
+$script:TiaEngineeringVersion = ''
 $script:YinRoot = Split-Path $PSScriptRoot -Parent
 $script:Portal = $null
 $script:Project = $null
@@ -26,6 +27,7 @@ function Get-YinNet48 {
     if (-not $script:Net48) {
         $inst = Get-YinTiaInstall
         $script:Net48 = $inst.Net48Dir
+        $script:TiaEngineeringVersion = $inst.EngineeringVersion
     }
     return $script:Net48
 }
@@ -75,11 +77,13 @@ function Connect-YinPortal {
     param([int]$ProcessId = 0)
 
     $null = Initialize-YinAssemblies
+    $script:LastAttachError = $null
 
     $tpType = Get-YinType 'Siemens.Engineering.TiaPortal'
     $procs = @($tpType::GetProcesses())
     if ($procs.Count -eq 0) {
-        throw "No running TIA Portal instance. Open TIA Portal V21 and open a project first."
+        $versionLabel = if ($script:TiaEngineeringVersion) { " $($script:TiaEngineeringVersion)" } else { '' }
+        throw "No running TIA Portal instance. Open TIA Portal$versionLabel and open a project first."
     }
 
     if ($ProcessId -gt 0) {
@@ -102,11 +106,19 @@ function Connect-YinPortal {
                 break
             }
         } catch {
-            if ($ProcessId -gt 0) { throw }
+            $script:LastAttachError = $_.Exception
         }
         if ($candidatePortal) { try { $candidatePortal.Dispose() } catch { } }
     }
     if (-not $script:Project) {
+        if ($script:LastAttachError) {
+            $errorType = $script:LastAttachError.GetType().FullName
+            $errorText = "$($script:LastAttachError.Message)"
+            if ($errorType -match 'EngineeringSecurityException' -or $errorText -match 'security|denied|permission|AllowList') {
+                throw '博途拒绝了本程序的访问。最常见的两个原因：(1) 当前 Windows 用户不在 "Siemens TIA Openness" 组；(2) 本程序路径未被博途 Openness AllowList 授权（绿色版换了目录后需要重新授权）。请点击「一键环境诊断」查看具体是哪一项。'
+            }
+            throw "TIA Portal 正在运行，但无法附着到工程。原始错误：$errorType`: $errorText"
+        }
         throw "TIA Portal is running but no project is open. Open a project first."
     }
 

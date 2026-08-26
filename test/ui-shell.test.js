@@ -37,6 +37,7 @@ function readCssBundle() {
         'web/css/panels.css',
         'web/css/modals.css',
         'web/css/components.css',
+        'web/css/chat-content.css',
     ].map(read).join('\n');
 }
 
@@ -79,7 +80,14 @@ test('workbench page exposes the three-column engineering shell', () => {
     assert.match(html, /class="tia-canvas"/);
     assert.match(html, /id="inspector"/);
     assert.match(html, /id="stElapsed"/);
-    assert.match(html, /class="tia-output collapsed" id="outputPanel"/);
+    assert.match(html, /class="tia-output" id="outputPanel"/);
+    assert.doesNotMatch(html, /class="tia-output collapsed" id="outputPanel"/);
+    assert.match(html, /id="outputCopy"/);
+    assert.match(html, /id="outputErrorsOnly"/);
+    assert.match(html, /id="stopButton"/);
+    assert.match(html, /id="stTiaLed"/);
+    assert.match(html, /id="stTiaOp"/);
+    assert.match(html, /id="stTiaQueue"/);
     assert.match(html, /class="tia-fullpanel hidden" id="onlinePanel"/);
     assert.match(html, /class="tia-modal-mask hidden" id="confirmModal"/);
     assert.match(html, /id="confirmFacts"/);
@@ -132,6 +140,47 @@ test('assistant code blocks stay bounded and scroll instead of expanding the pag
     assert.match(codeBlockRule, /scrollbar-gutter:\s*stable/);
 });
 
+test('workbench loads scoped chat content styles with complete interaction states', () => {
+    const html = read('index.html');
+    const css = read('web/css/chat-content.css');
+
+    assert.match(html, /href="web\/css\/chat-content\.css"/);
+    for (const selector of [
+        '.tia-messages .message',
+        '.tia-messages .user-message',
+        '.tia-messages .assistant-message',
+        '.tia-messages .message-content',
+        '.tia-messages .typing-cursor',
+        '.code-block .code-action',
+        '.code-block .code-action.primary',
+        '.code-block .code-action.danger',
+        '.code-block + .validate-result',
+        '.tia-fullpanel .tia-input',
+    ]) {
+        assert.ok(css.includes(selector), `missing scoped chat selector: ${selector}`);
+    }
+    assert.match(css, /@keyframes\s+tia-cursor-blink/);
+    assert.match(css, /\.code-block \.code-action:hover/);
+    assert.match(css, /\.code-block \.code-action:active/);
+    assert.match(css, /\.code-block \.code-action:focus-visible/);
+    assert.match(css, /\.code-block \.code-action:disabled/);
+});
+
+test('inline validation and write diagnostics render below the code block', () => {
+    const source = read('web/tia-actions.js');
+    const css = read('web/css/chat-content.css');
+
+    assert.match(source, /btn\.closest\('\.code-block'\)/);
+    assert.match(source, /codeBlock\.insertAdjacentElement\('afterend', box\)/);
+    assert.doesNotMatch(source, /header\.appendChild\(resultBox\)|header\.appendChild\(box\)/);
+    assert.match(css, /\.validate-result\s*\{[\s\S]*white-space:\s*pre-wrap/);
+    assert.match(css, /\.validate-result\s*\{[\s\S]*max-height:\s*240px/);
+    assert.match(css, /\.validate-result\s*\{[\s\S]*overflow:\s*auto/);
+    assert.match(css, /\.validate-result\.(?:ok|valid)/);
+    assert.match(css, /\.validate-result\.warn/);
+    assert.match(css, /\.validate-result\.(?:error|invalid)/);
+});
+
 test('every page header uses the shared high-contrast TIA blue treatment', () => {
     const tia = readCssBundle();
     const operations = read('operations.css');
@@ -164,13 +213,16 @@ test('workbench status endpoint remains read-only and client loads it silently',
     assert.doesNotMatch(statusRoute, /checkOpennessEnvironment|preflightImport|importToTia|llmStream|execFile/);
 });
 
-test('frontend assets are served without stale browser cache during field testing', () => {
-    assert.match(serverEntrySrc, /NO_STORE_STATIC_EXTENSIONS = new Set\(\['\.html', '\.js', '\.css'\]\)/);
-    assert.match(serverEntrySrc, /setHeaders\(res, filePath\)/);
-    assert.match(serverEntrySrc, /X-Content-Type-Options', 'nosniff'/);
-    assert.match(serverEntrySrc, /Cache-Control', 'no-store, max-age=0, must-revalidate'/);
-    assert.match(serverEntrySrc, /Pragma', 'no-cache'/);
-    assert.match(serverEntrySrc, /Expires', '0'/);
+test('approved frontend assets are explicitly served without stale browser cache', () => {
+    assert.match(serverEntrySrc, /const FRONTEND_PAGES = \[[^\]]*'login\.html'[^\]]*'index\.html'[^\]]*'env-check\.html'[^\]]*\]/);
+    assert.match(serverEntrySrc, /const FRONTEND_ASSETS = \[[^\]]*'login\.css'[^\]]*'login\.js'[^\]]*'tia-import-state\.js'[^\]]*\]/);
+    assert.match(serverEntrySrc, /for \(const file of \[\.\.\.FRONTEND_PAGES, \.\.\.FRONTEND_ASSETS\]\)/);
+    assert.match(serverEntrySrc, /app\.use\('\/web', noStore, express\.static\(path\.join\(APP_ROOT, 'web'\), \{ index: false \}\)\)/);
+    assert.doesNotMatch(serverEntrySrc, /app\.use\(express\.static\(APP_ROOT/);
+    assert.match(serverEntrySrc, /'X-Content-Type-Options': 'nosniff'/);
+    assert.match(serverEntrySrc, /'Cache-Control': 'no-store, max-age=0, must-revalidate'/);
+    assert.match(serverEntrySrc, /Pragma: 'no-cache'/);
+    assert.match(serverEntrySrc, /Expires: '0'/);
 });
 
 test('settings tests saved providers on the backend and workbench persists fallback model', () => {
@@ -303,7 +355,7 @@ test('model test status: server persistence, settings lamps, workbench indicator
     assert.match(client, /j\.status\.ai\.currentModelTestStatus/);
     assert.match(client, /this\.modelTestStatus = document\.getElementById\('modelTestStatus'\)/);
     // 只检查 updateModelTestStatus 函数体内部不使用 localStorage（截取函数体，避免跨函数误报）
-    const updateFn = client.match(/updateModelTestStatus\(status, message = ''\) \{\n([\s\S]*?)\n    \}/)?.[0] || '';
+    const updateFn = client.match(/updateModelTestStatus\(status, message = ''\) \{\r?\n([\s\S]*?)\r?\n    \}/)?.[0] || '';
     assert.ok(updateFn.includes('updateModelTestStatus'), 'updateModelTestStatus 函数未找到');
     assert.doesNotMatch(updateFn, /localStorage/);
 
@@ -378,6 +430,19 @@ test('left tree no longer duplicates ribbon series/language pickers', () => {
     assert.ok(!treeSection.includes("folder('language'"));
     assert.ok(!treeSection.includes('data-tree-series'));
     assert.ok(!treeSection.includes('待写入队列'));
+});
+
+test('left tree persists a versioned state and applies the first click directly', () => {
+    const source = read('web/tree.js');
+    const treeSection = source.slice(source.indexOf('renderProjectTree()'), source.indexOf('renderProjectTree()') + 3000);
+
+    assert.match(treeSection, /plcTreeOpenV2/);
+    assert.match(treeSection, /const nextOpen = !isOpen\(key\)/);
+    assert.match(treeSection, /open\[key\] = nextOpen/);
+    assert.match(treeSection, /section\.hidden = !nextOpen/);
+    assert.match(treeSection, /classList\.toggle\('is-open', nextOpen\)/);
+    assert.match(treeSection, /section\.hidden = !isOpen\(key\)/);
+    assert.doesNotMatch(treeSection, /localStorage\.getItem\('plcTreeOpen'\)/);
 });
 
 test('s200smart and graph are marked as to-be-developed and cannot be switched to', () => {

@@ -1,5 +1,19 @@
 const express = require('express');
 const { logTiaOperation } = require('../lib/logger');
+const { sanitizeDiagnostic } = require('../lib/sanitize');
+const { explainTiaError } = require('../lib/tia-error-hints');
+
+function tiaErrorPayload(prefix, error, xml) {
+    const rawDetail = error?.recentStderr || error?.stderr || error?.detail || [];
+    const detail = sanitizeDiagnostic(Array.isArray(rawDetail) ? rawDetail : String(rawDetail).split(/\r?\n/));
+    const safeMessage = sanitizeDiagnostic(error?.message) || '未知错误';
+    return {
+        success: false,
+        message: `${prefix}: ${safeMessage}`,
+        detail,
+        hint: explainTiaError(error?.message, detail, { xml }),
+    };
+}
 
 function addValidateRoute(router, deps) {
     const { authenticateToken, validatePlcXml, validateLadBusinessRules } = deps;
@@ -27,7 +41,7 @@ router.post('/validate', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('XSD校验错误:', error.message);
-        res.status(500).json({ success: false, message: '校验服务出错: ' + error.message });
+        res.status(500).json(tiaErrorPayload('校验服务出错', error, xml));
     }
 });
 }
@@ -129,7 +143,7 @@ router.post('/preflight', authenticateToken, localOnly, async (req, res) => {
     } catch (error) {
         logTiaOperation({ user, op: 'preflight', target: req.body.lang || 'payload', ms: Date.now() - startedAt, ok: false, err: error });
         console.error('博途预检错误:', error.message);
-        res.status(500).json({ success: false, message: '预检失败: ' + error.message });
+        res.status(500).json(tiaErrorPayload('预检失败', error, xml));
     }
 });
 
@@ -177,7 +191,7 @@ router.post('/import', authenticateToken, localOnly, async (req, res) => {
     } catch (error) {
         logTiaOperation({ user, op: 'import', target: confirmation.blockName, ms: Date.now() - startedAt, ok: false, err: error });
         console.error('博途导入错误:', error.message);
-        res.status(500).json({ success: false, message: '导入失败: ' + error.message });
+        res.status(500).json(tiaErrorPayload('导入失败', error, xml));
     }
 });
 

@@ -15,12 +15,14 @@ namespace TiaMcpServer.ModelContextProtocol
     // SKILL.md documents it, so the tool must exist in every released build.
     public static partial class McpServer
     {
-        [McpServerTool(Name = "Doctor"), Description("[L0][Diagnostics] One-call environment doctor for non-experts. Checks TIA install, Openness group membership, and connection/project state, and returns a plain-language diagnosis with the exact fix per problem. When fix=true (default) it ENSURES Openness group membership (adds the current user; may prompt a Windows UAC dialog). Read-only apart from that one fix. Call this first when setup is failing or you are unsure the environment is ready.")]
+        [McpServerTool(Name = "Doctor"), Description("[L0][Diagnostics] One-call read-only environment doctor for non-experts. Checks TIA install, Openness group membership, and connection/project state, and returns a plain-language diagnosis with the exact manual fix per problem. Does not add users or prompt UAC. Call this first when setup is failing or you are unsure the environment is ready.")]
         public static async Task<ResponseDoctor> Doctor(
-            [Description("fix: when true (default), ensure Openness group membership (adds user, may prompt UAC). false = read-only diagnosis, no prompt.")] bool fix = true)
+            [Description("Compatibility flag retained; Doctor is always read-only and never adds users or prompts UAC.")] bool fix = true)
         {
             try
             {
+                _ = fix;
+                await Task.CompletedTask;
                 var checks = new List<DoctorCheck>();
 
                 // 1) TIA installation
@@ -35,24 +37,16 @@ namespace TiaMcpServer.ModelContextProtocol
                     Fix = tiaOk ? null : "Install TIA Portal V18+ with the Openness option, then set the user environment variable TiaPortalLocation to the install path (e.g. C:\\Program Files\\Siemens\\Automation\\Portal V21)."
                 });
 
-                // 2) Openness group membership (+ optional auto-fix)
+                // 2) Openness group membership (read-only; never auto-fixes)
                 bool groupOk;
-                if (fix)
-                {
-                    try { groupOk = await Siemens.Openness.IsUserInGroup(); }
-                    catch { groupOk = false; }
-                }
-                else
-                {
-                    try { groupOk = Siemens.Openness.IsUserInGroupNoFix(); }
-                    catch { groupOk = false; }
-                }
+                try { groupOk = Siemens.Openness.IsUserInGroupNoFix(); }
+                catch { groupOk = false; }
                 checks.Add(new DoctorCheck
                 {
                     Name = "Openness user group",
                     Ok = groupOk,
                     Detail = groupOk ? "current user is in 'Siemens TIA Openness' group" : "current user NOT in 'Siemens TIA Openness' group",
-                    Fix = groupOk ? null : "Run Doctor with fix=true (prompts UAC to add you), or manually add your Windows user to the 'Siemens TIA Openness' local group and sign out/in. Admin rights required."
+                    Fix = groupOk ? null : OpennessManualFix()
                 });
 
                 // 3) Connection + project state
@@ -70,7 +64,7 @@ namespace TiaMcpServer.ModelContextProtocol
 
                 string next;
                 if (!tiaOk) next = "(install TIA Portal)";
-                else if (!groupOk) next = "EnsureOpennessUserGroup";
+                else if (!groupOk) next = "(manual Openness group fix)";
                 else if (!connected) next = "Connect";
                 else if (!hasProject) next = "AttachToOpenProject";
                 else next = "GetProjectTree";

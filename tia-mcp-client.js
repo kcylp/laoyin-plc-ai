@@ -45,11 +45,34 @@ function registryValue(key, valueName = 'Path', exec = execFileSync) {
 function portalRootFromAssemblyPath(assemblyPath, expectedMajorVersion) {
     const file = trimTrailingSeparators(assemblyPath);
     if (!file) return null;
-    const root = file.replace(/[\\/]PublicAPI[\\/]V?\d+[\\/]net(?:4[578]|48)[\\/][^\\/]+\.dll$/i, '');
+    const root = file.replace(/[\\/]PublicAPI[\\/]V?\d+(?:\.\d+\.\d+\.\d+)?[\\/]net(?:4[578]|48)[\\/][^\\/]+\.dll$/i, '');
     if (root !== file && (expectedMajorVersion == null || versionFromPath(root) === Number(expectedMajorVersion))) {
         return existingDirectory(root);
     }
     return null;
+}
+
+function registryTiaMajorVersions(exec = execFileSync) {
+    const majors = new Set();
+    for (const [key, pattern] of [
+        ['HKLM\\SOFTWARE\\Siemens\\Automation\\Openness', /\\(\d+)\.\d+\s*$/],
+        ['HKLM\\SOFTWARE\\Siemens\\Automation\\_InstalledSW', /\\TIAP(\d+)\s*$/i],
+    ]) {
+        try {
+            const output = exec('reg', ['query', key], { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+            for (const line of String(output).split(/\r?\n/)) {
+                const match = line.match(pattern);
+                if (match) majors.add(Number(match[1]));
+            }
+        } catch { /* this registry source is optional */ }
+    }
+    return [...majors];
+}
+
+function publicApiDirFromAssemblyPath(assemblyPath, fsApi = fs) {
+    const file = trimTrailingSeparators(assemblyPath);
+    const directory = file ? path.dirname(file) : '';
+    return existingDirectory(directory, fsApi);
 }
 
 /**
@@ -59,18 +82,19 @@ function portalRootFromAssemblyPath(assemblyPath, expectedMajorVersion) {
  */
 function findTiaPortalRoots(majorVersion = DEFAULT_TIA_MAJOR_VERSION, options = {}) {
     const roots = [];
-    const add = (value, source) => {
-        const root = existingDirectory(value, fsApi);
-        if (!root) return;
-        const foundVersion = versionFromPath(root);
-        if (foundVersion != null && foundVersion !== Number(majorVersion)) return;
-        if (!roots.some(item => item.path.toLowerCase() === root.toLowerCase())) roots.push({ path: root, source });
-    };
     const env = options.env || process.env;
     const exec = options.execFileSync || execFileSync;
     const fsApi = options.fsApi || fs;
     const fileExists = options.existsSync || fsApi.existsSync;
-    const defaultRoot = `C:\\Program Files\\Siemens\\Automation\\Portal V${majorVersion}`;
+    const add = (value, source, details = {}) => {
+        const root = existingDirectory(value, fsApi);
+        if (!root) return;
+        const foundVersion = versionFromPath(root);
+        if (foundVersion != null && foundVersion !== Number(majorVersion)) return;
+        if (!roots.some(item => item.path.toLowerCase() === root.toLowerCase())) {
+            roots.push({ path: root, source, ...details });
+        }
+    };
 
     add(env.YIN_TIA_PORTAL_ROOT, 'YIN_TIA_PORTAL_ROOT');
     add(env.TiaPortalLocation, 'TiaPortalLocation');
@@ -81,19 +105,18 @@ function findTiaPortalRoots(majorVersion = DEFAULT_TIA_MAJOR_VERSION, options = 
 
     // Openness registry stores the authoritative assembly path even when the
     // optional TIA_Opns key is absent.
-    let opennessAssembly = registryValue(
-        `HKLM\\SOFTWARE\\Siemens\\Automation\\Openness\\${majorVersion}.0\\PublicAPI\\${majorVersion}.0.0.0\\net48`,
-        'Siemens.Engineering.Base',
-        exec
-    );
-    if (!opennessAssembly) {
-        opennessAssembly = registryValue(
-            `HKLM\\SOFTWARE\\Siemens\\Automation\\Openness\\${majorVersion}.0\\PublicAPI\\${majorVersion}.0.0.0\\net47`,
-            'Siemens.Engineering.Base',
-            exec
-        );
+    const opennessBase = `HKLM\\SOFTWARE\\Siemens\\Automation\\Openness\\${majorVersion}.0\\PublicAPI\\${majorVersion}.0.0.0`;
+    let opennessAssembly = null;
+    for (const suffix of ['', '\\net48', '\\net47']) {
+        for (const valueName of ['Siemens.Engineering.Base', 'Siemens.Engineering']) {
+            opennessAssembly = registryValue(opennessBase + suffix, valueName, exec);
+            if (opennessAssembly) break;
+        }
+        if (opennessAssembly) break;
     }
-    add(portalRootFromAssemblyPath(opennessAssembly, majorVersion), 'registry:Openness/PublicAPI');
+    add(portalRootFromAssemblyPath(opennessAssembly, majorVersion), 'registry:Openness/PublicAPI', {
+        publicApiDir: publicApiDirFromAssemblyPath(opennessAssembly, fsApi),
+    });
 
     const programFiles = env.ProgramW6432 || env.ProgramFiles || 'C:\\Program Files';
     const automationRoot = path.join(programFiles, 'Siemens', 'Automation');
@@ -105,7 +128,6 @@ function findTiaPortalRoots(majorVersion = DEFAULT_TIA_MAJOR_VERSION, options = 
             }
         } catch { /* diagnostics will report missing path */ }
     }
-    add(defaultRoot, 'default');
     return roots;
 }
 
@@ -116,21 +138,120 @@ function detectPortalRoot(majorVersion = DEFAULT_TIA_MAJOR_VERSION, options = {}
         return cachedPortalRoots.get(cacheKey);
     }
     const roots = findTiaPortalRoots(majorVersion, options);
-    const chosen = roots.length ? roots[0].path : `C:\\Program Files\\Siemens\\Automation\\Portal V${majorVersion}`;
+    const chosen = roots.length ? roots[0].path : null;
     if (!options.env && !options.execFileSync && !options.existsSync && !options.fsApi) cachedPortalRoots.set(cacheKey, chosen);
     return chosen;
 }
 
+function getSupportedTiaMajorVersions(options = {}) {
+    const fsApi = options.fsApi || fs;
+    const runtimeDir = options.runtimeDir || path.join(APP_ROOT, 'engine', 'tia-mcp', 'runtime');
+    try {
+        return fsApi.readdirSync(runtimeDir, { withFileTypes: true })
+            .filter(entry => entry.isDirectory() && /^v\d+$/i.test(entry.name))
+            .map(entry => Number(entry.name.slice(1)))
+            .filter(Number.isInteger)
+            .sort((a, b) => a - b);
+    } catch {
+        return [];
+    }
+}
+
+function discoverTiaEnvironment(options = {}) {
+    const env = options.env || process.env;
+    const fsApi = options.fsApi || fs;
+    const supportedByThisBuild = getSupportedTiaMajorVersions(options);
+    const candidateMajors = new Set(supportedByThisBuild);
+    const requestedMajor = Number(options.requestedMajor || env.YIN_TIA_MAJOR_VERSION || 0) || null;
+    if (requestedMajor) candidateMajors.add(requestedMajor);
+    for (const major of registryTiaMajorVersions(options.execFileSync || execFileSync)) candidateMajors.add(major);
+    for (const explicitPath of [env.YIN_TIA_PORTAL_ROOT, env.TiaPortalLocation]) {
+        const major = versionFromPath(explicitPath);
+        if (major) candidateMajors.add(major);
+    }
+    const programFiles = env.ProgramW6432 || env.ProgramFiles || 'C:\\Program Files';
+    const automationRoot = path.join(programFiles, 'Siemens', 'Automation');
+    try {
+        for (const entry of fsApi.readdirSync(automationRoot, { withFileTypes: true })) {
+            const match = entry.isDirectory() && entry.name.match(/^Portal V(\d+)$/i);
+            if (match) candidateMajors.add(Number(match[1]));
+        }
+    } catch { /* registry probing below may still find non-default installs */ }
+    const installedVersions = [];
+    for (const major of [...candidateMajors].sort((a, b) => a - b)) {
+        const roots = findTiaPortalRoots(major, options);
+        if (!roots.length) continue;
+        const chosen = roots[0];
+        const publicApiDir = chosen.publicApiDir || null;
+        installedVersions.push({
+            major,
+            engineeringVersion: `V${major}`,
+            portalRoot: chosen.path,
+            publicApiDir,
+            pathSource: chosen.source.startsWith('registry:') ? 'registry' : chosen.source,
+            dllsPresent: {
+                engineeringBase: publicApiDir ? fsApi.existsSync(path.join(publicApiDir, 'Siemens.Engineering.Base.dll')) : null,
+                engineering: publicApiDir ? fsApi.existsSync(path.join(publicApiDir, 'Siemens.Engineering.dll')) : null,
+            },
+        });
+    }
+
+    const explicitMajor = versionFromPath(env.YIN_TIA_PORTAL_ROOT) || versionFromPath(env.TiaPortalLocation);
+    const explicitInstalled = explicitMajor
+        ? installedVersions.find(item => item.major === explicitMajor) || null
+        : null;
+    const requestedInstalled = requestedMajor
+        ? installedVersions.find(item => item.major === requestedMajor) || null
+        : null;
+    const supportedInstalled = installedVersions.filter(item => supportedByThisBuild.includes(item.major));
+    const selected = explicitInstalled || requestedInstalled || (supportedInstalled.length ? supportedInstalled : installedVersions).at(-1) || null;
+    const mismatch = selected && !supportedByThisBuild.includes(selected.major)
+        ? { detected: selected.major, supported: supportedByThisBuild.slice() }
+        : false;
+    let notice = '';
+    if (installedVersions.length > 1 && selected) {
+        const labels = installedVersions.map(item => `V${item.major}`).join('、');
+        notice = `同时检测到博途 ${labels}，将使用 V${selected.major}。可设置 YIN_TIA_PORTAL_ROOT 指定其他安装路径。`;
+    }
+    return {
+        installedVersions,
+        selectedMajor: selected ? selected.major : null,
+        supportedByThisBuild,
+        mismatch,
+        notice,
+    };
+}
+
 class TiaMcpClient {
     constructor(options = {}) {
-        this.tiaMajorVersion = Number(options.tiaMajorVersion || process.env.YIN_TIA_MAJOR_VERSION || DEFAULT_TIA_MAJOR_VERSION);
-        this.exePath = options.exePath || process.env.YIN_TIA_MCP_EXE || path.join(APP_ROOT, 'engine', 'tia-mcp', 'runtime', `v${this.tiaMajorVersion}`, 'TiaMcpServer.exe');
-        // Explicitly pass the detected install root. This bypasses machines where
-        // Siemens did not create _InstalledSW\\TIAP*\\TIA_Opns.
-        this.portalRoot = options.portalRoot || process.env.YIN_TIA_PORTAL_ROOT || (options.args ? null : detectPortalRoot(this.tiaMajorVersion));
+        this.runtimeDir = options.runtimeDir || path.join(APP_ROOT, 'engine', 'tia-mcp', 'runtime');
+        this.customArgs = Array.isArray(options.args);
+        const requestedMajor = Number(options.tiaMajorVersion || process.env.YIN_TIA_MAJOR_VERSION || 0) || null;
+        const discoveryOptions = {
+            ...(options.discoveryOptions || {}),
+            runtimeDir: this.runtimeDir,
+            requestedMajor,
+        };
+        if (options.portalRoot) {
+            discoveryOptions.env = {
+                ...(discoveryOptions.env || process.env),
+                YIN_TIA_PORTAL_ROOT: options.portalRoot,
+            };
+        }
+        this.discovery = this.customArgs ? null : discoverTiaEnvironment(discoveryOptions);
+        const discoveredMajor = this.discovery && this.discovery.selectedMajor;
+        const defaultSupportedMajor = this.discovery && this.discovery.supportedByThisBuild.at(-1);
+        this.tiaMajorVersion = requestedMajor || discoveredMajor || defaultSupportedMajor || DEFAULT_TIA_MAJOR_VERSION;
+        const selectedInstall = this.discovery && this.discovery.installedVersions
+            .find(item => item.major === this.tiaMajorVersion);
+        this.portalRoot = options.portalRoot || process.env.YIN_TIA_PORTAL_ROOT
+            || (selectedInstall && selectedInstall.portalRoot) || null;
+        this.explicitExePath = Boolean(options.exePath || process.env.YIN_TIA_MCP_EXE);
+        this.exePath = options.exePath || process.env.YIN_TIA_MCP_EXE
+            || path.join(this.runtimeDir, `v${this.tiaMajorVersion}`, 'TiaMcpServer.exe');
         this.args = options.args || [
             '--tia-portal-location',
-            options.portalRoot || process.env.YIN_TIA_PORTAL_ROOT || detectPortalRoot(this.tiaMajorVersion),
+            this.portalRoot,
             '--tia-major-version',
             String(this.tiaMajorVersion)
         ];
@@ -155,8 +276,24 @@ class TiaMcpClient {
 
     start() {
         if (this.isRunning()) return;
+        if (!this.customArgs) {
+            if (this.discovery.mismatch) {
+                const supported = this.discovery.mismatch.supported.map(version => `V${version}`).join('、') || '无';
+                throw new Error(`检测到您安装的是博途 V${this.discovery.mismatch.detected}，而当前版本的助手仅支持博途 ${supported}。请联系我们获取对应版本。强行连接会导致程序崩溃，因此已阻止。`);
+            }
+            if ((!this.discovery.installedVersions.length || !this.portalRoot) && !this.explicitExePath) {
+                throw new Error('未检测到博途安装。若已安装，可能是安装时未勾选 Openness 选件，或安装在非标准位置，请运行一键环境诊断。');
+            }
+            if (this.discovery.notice) {
+                this.stderrLog.push(this.discovery.notice);
+                if (this.onStderr) this.onStderr(this.discovery.notice);
+            }
+        }
         if (!this.available()) {
             throw new Error(`TiaMcpServer.exe 不存在: ${this.exePath}(engine/tia-mcp 未 vendor)`);
+        }
+        if (!this.customArgs && (!this.discovery.installedVersions.length || !this.portalRoot)) {
+            throw new Error('未检测到博途安装。若已安装，可能是安装时未勾选 Openness 选件，或安装在非标准位置，请运行一键环境诊断。');
         }
         this.lineBuffer = '';
         const proc = spawn(this.exePath, this.args, {
@@ -307,6 +444,7 @@ class TiaMcpClient {
             exePath: this.exePath,
             portalRoot: this.portalRoot,
             tiaMajorVersion: this.tiaMajorVersion,
+            discovery: this.discovery,
             running: this.isRunning(),
             initialized: this.initialized,
             serverInfo: this.serverInfo,
@@ -322,4 +460,12 @@ function getSharedClient() {
     return shared;
 }
 
-module.exports = { TiaMcpClient, getSharedClient, detectPortalRoot, findTiaPortalRoots, portalRootFromAssemblyPath };
+module.exports = {
+    TiaMcpClient,
+    getSharedClient,
+    detectPortalRoot,
+    discoverTiaEnvironment,
+    findTiaPortalRoots,
+    getSupportedTiaMajorVersions,
+    portalRootFromAssemblyPath,
+};

@@ -683,7 +683,7 @@ namespace TiaMcpServer.Siemens
                     }
                     catch (EngineeringTargetInvocationException engEx)
                     {
-                        failures.Add($"{block.Name}: target invocation failed ({engEx.Message})");
+                        failures.Add($"{block.Name}: target invocation failed ({McpErrorDetail.Format(engEx)})");
                         _logger?.LogError(engEx, "TargetInvocationException exporting {Block}", block.Name);
 
                         continue;
@@ -1194,7 +1194,7 @@ namespace TiaMcpServer.Siemens
             }
             catch (EngineeringTargetInvocationException ex)
             {
-                throw new PortalException(PortalErrorCode.ImportFailed, $"ImportFromDocuments failed for '{fileNameWithoutExtension}' into group '{(string.IsNullOrWhiteSpace(groupPath) ? "<root>" : groupPath)}': {ex.Message}. Check the .s7dcl syntax (types/attributes) and that .s7res matches the S7_MLC ids.", null, ex);
+                throw new PortalException(PortalErrorCode.ImportFailed, $"ImportFromDocuments failed for '{fileNameWithoutExtension}' into group '{(string.IsNullOrWhiteSpace(groupPath) ? "<root>" : groupPath)}': {McpErrorDetail.Format(ex)}. Check the .s7dcl syntax (types/attributes) and that .s7res matches the S7_MLC ids.", null, ex);
             }
             catch (Exception ex)
             {

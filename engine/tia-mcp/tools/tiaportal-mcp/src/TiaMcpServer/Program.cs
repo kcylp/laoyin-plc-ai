@@ -326,7 +326,7 @@ namespace TiaMcpServer
 
                 // Ensure user is in user group 'Siemens TIA Openness'.
                 LogDiag("Checking Windows group membership: Siemens TIA Openness");
-                var opennessUserOk = await Openness.IsUserInGroup();
+                var opennessUserOk = Openness.IsUserInGroupNoFix();
                 LogDiag($"Siemens TIA Openness group membership: {opennessUserOk}");
                 if (opennessUserOk)
                 {
@@ -528,8 +528,10 @@ namespace TiaMcpServer
                 else
                 {
                     LogDiag("User is not in the required group 'Siemens TIA Openness'. Exiting.");
-                    LogDiag("FIX: run this exe with `doctor` (e.g. tia.cmd doctor --fix) or add your Windows user to the local group 'Siemens TIA Openness' (lusrmgr.msc), then sign out/in and restart the AI client.");
-                    LogDiag("修复：运行 tia.cmd doctor --fix，或手动把当前 Windows 用户加入本地组 'Siemens TIA Openness'（lusrmgr.msc），注销重登后重启 AI 客户端。");
+                    LogDiag($"Current Windows user: {CurrentWindowsUser()}");
+                    LogDiag("Target local group: Siemens TIA Openness");
+                    LogDiag($"FIX: open an elevated PowerShell and run: Add-LocalGroupMember -Group \"Siemens TIA Openness\" -Member \"{CurrentWindowsUser()}\"; then sign out/in and restart the AI client.");
+                    LogDiag($"修复：用管理员 PowerShell 执行：Add-LocalGroupMember -Group \"Siemens TIA Openness\" -Member \"{CurrentWindowsUser()}\"；然后注销重登并重启 AI 客户端。");
                     Environment.ExitCode = 2;
                 }
             }
@@ -549,6 +551,13 @@ namespace TiaMcpServer
                 // Re-throw so host surfaces failure, but we still have the log on disk.
                 throw;
             }
+        }
+
+        private static string CurrentWindowsUser()
+        {
+            var domain = Environment.UserDomainName;
+            var user = Environment.UserName;
+            return string.IsNullOrWhiteSpace(domain) ? user : $"{domain}\\{user}";
         }
 
         public static async Task RunStdioHost(CliOptions? options)

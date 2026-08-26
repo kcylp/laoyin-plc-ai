@@ -3,6 +3,8 @@ import { confirmDialog } from './confirm-dialog.js';
 import { outputPanel } from './output-panel.js';
 
 export const chatMethods = {
+    currentAbortController: null,
+
     async sendMessage() {
         const message = this.userInput.value.trim();
         if (!message || this.isResponding) return;
@@ -83,12 +85,16 @@ export const chatMethods = {
         this.addUserMessage(message + '（整工程）');
         this.userInput.value = '';
         this.setLoading(true);
+        this.startTimer();
+        this.currentAbortController = new AbortController();
         const pending = this.addAssistantMessage('', true);
+        pending.innerHTML = '<p>正在生成工程 spec...</p><p>阶段 1/3：请求 AI 生成工程结构；阶段 2/3：等待博途队列；阶段 3/3：离线校验。</p>';
         try {
             const r = await fetch('/api/tia/mcp/scaffold', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
                 body: JSON.stringify({ requirement: message }),
+                signal: this.currentAbortController.signal,
             });
             const j = await r.json().catch(() => null);
             if (j && j.success && j.spec) {
@@ -118,12 +124,16 @@ export const chatMethods = {
                     });
                     if (!decision) return;
                     runBtn.disabled = true;
-                    resultDiv.innerHTML = '<p>正在建工程（可能需要数分钟）…</p>';
+                    this.setLoading(true);
+                    this.startTimer();
+                    this.currentAbortController = new AbortController();
+                    resultDiv.innerHTML = '<p>正在建工程...</p><p>阶段 1/4：提交执行；阶段 2/4：等待博途队列；阶段 3/4：创建项目和硬件；阶段 4/4：编译保存。</p>';
                     try {
                         const rr = await fetch('/api/tia/mcp/scaffold', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
                             body: JSON.stringify({ spec: j.spec, confirmed: true }),
+                            signal: this.currentAbortController.signal,
                         });
                         const jj = await rr.json().catch(() => null);
                         const report = jj && (typeof jj.runReport === 'string' ? jj.runReport : JSON.stringify(jj.runReport, null, 2));
@@ -137,10 +147,21 @@ export const chatMethods = {
                             detail: jj || null,
                         });
                     } catch (e) {
-                        resultDiv.innerHTML = `<p style="color:var(--tia-err)">建工程异常:${this.escapeHtml(e.message)}</p>`;
-                        outputPanel.push({ kind: 'error', title: '建工程正式报告异常', body: e.message });
+                        const aborted = e.name === 'AbortError';
+                        resultDiv.innerHTML = aborted
+                            ? '<p>建工程已取消。</p>'
+                            : `<p style="color:var(--tia-err)">建工程异常:${this.escapeHtml(e.message)}</p>`;
+                        outputPanel.push({
+                            kind: aborted ? 'warn' : 'error',
+                            title: aborted ? '建工程已取消' : '建工程正式报告异常',
+                            body: aborted ? '用户已停止工程创建。' : e.message,
+                        });
                         runBtn.disabled = false;
                         return;
+                    } finally {
+                        this.currentAbortController = null;
+                        this.setLoading(false);
+                        this.stopTimer();
                     }
                     this.refreshRealTree();
                 });
@@ -151,10 +172,15 @@ export const chatMethods = {
                 outputPanel.push({ kind: 'error', title: '建工程 dryRun 失败', body: msg, detail: j || null });
             }
         } catch (e) {
-            pending.innerHTML = `<p style="color:var(--tia-err)">建工程请求异常:${this.escapeHtml(e.message)}</p>`;
-            outputPanel.push({ kind: 'error', title: '建工程 dryRun 异常', body: e.message });
+            const aborted = e.name === 'AbortError';
+            pending.innerHTML = aborted
+                ? '<p>建工程已取消。</p>'
+                : `<p style="color:var(--tia-err)">建工程请求异常:${this.escapeHtml(e.message)}</p>`;
+            outputPanel.push({ kind: aborted ? 'warn' : 'error', title: aborted ? '建工程已取消' : '建工程 dryRun 异常', body: aborted ? '用户已停止工程 spec 生成。' : e.message });
         } finally {
+            this.currentAbortController = null;
             this.setLoading(false);
+            this.stopTimer();
             this.scrollToBottom();
         }
     },
@@ -167,6 +193,7 @@ export const chatMethods = {
                 ${this.escapeHtml(message)}
             </div>
         `;
+        this.appendUserActions(messageDiv, message);
         this.messagesContainer.appendChild(messageDiv);
         this.scrollToBottom();
     },
@@ -197,10 +224,14 @@ export const chatMethods = {
         const assistantMessageContent = this.addAssistantMessage('', true);
         let responseText = '';
         const token = localStorage.getItem('token');
+        this.currentAbortController = new AbortController();
 
         try {
             if (!this.modelId) await this.loadModels();
             if (!this.modelId) throw new Error('当前账号没有已启用模型，请先到设置页保存所选模型');
+
+            const allowProjectContext = this.projectContextAllowed();
+            const includeAllVariables = this.projectContextAllVariables();
 
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -212,8 +243,13 @@ export const chatMethods = {
                     message: userMessage,
                     series: this.series,
                     lang: this.lang,
-                    modelId: this.modelId
-                })
+                    modelId: this.modelId,
+                    includeContext: allowProjectContext,
+                    includeAllVariables,
+                    history: this.collectVisibleHistory(),
+                    regenerate: !!this.isRegenerating
+                }),
+                signal: this.currentAbortController.signal
             });
 
             if (!response.ok) {
@@ -254,8 +290,15 @@ export const chatMethods = {
                         if (data.type === 'delta') {
                             responseText += data.content;
                             this.updateStreamingMessage(assistantMessageContent, responseText);
+                        } else if (data.type === 'context') {
+                            this.updateContextBar(data.projectContext || {});
+                            this.lastProjectContextDetails = data.details || null;
                         } else if (data.type === 'done') {
                             responseText = data.content;
+                        } else if (data.type === 'aborted') {
+                            responseText = data.message || 'AI 生成已停止';
+                            assistantMessageContent.dataset.aborted = '1';
+                            throw new DOMException(responseText, 'AbortError');
                         } else if (data.type === 'error') {
                             throw new Error(data.message);
                         }
@@ -271,16 +314,38 @@ export const chatMethods = {
             this.finalizeMessage(assistantMessageContent, responseText);
 
         } catch (error) {
-            console.error('AI请求错误:', error);
-            this.finalizeMessage(assistantMessageContent, '抱歉，请求出错：' + error.message);
+            if (error.name === 'AbortError') {
+                this.finalizeMessage(assistantMessageContent, 'AI 生成已停止');
+            } else {
+                console.error('AI请求错误:', error);
+                this.finalizeMessage(assistantMessageContent, '抱歉，请求出错：' + error.message);
+            }
+        } finally {
+            this.currentAbortController = null;
+            this.isRegenerating = false;
+            this.setLoading(false);
+            this.stopTimer();
         }
-
-        this.setLoading(false);
-        this.stopTimer();
     },
 
     updateStreamingMessage(element, text) {
-        element.innerHTML = this.formatMessage(text, true) + '<span class="typing-cursor"></span>';
+        const previous = element.dataset.streamText || '';
+        element.dataset.streamText = text;
+        const hasFence = /```/.test(text);
+        if (!hasFence && !element.dataset.streamFormatted) {
+            if (!element.__streamTextNode) {
+                element.textContent = '';
+                element.__streamTextNode = document.createTextNode('');
+                element.appendChild(element.__streamTextNode);
+                const cursor = document.createElement('span');
+                cursor.className = 'typing-cursor';
+                element.appendChild(cursor);
+            }
+            element.__streamTextNode.nodeValue += text.slice(previous.length);
+        } else {
+            element.dataset.streamFormatted = '1';
+            element.innerHTML = this.formatMessage(text, true) + '<span class="typing-cursor"></span>';
+        }
         this.scrollToBottom();
     },
 
@@ -288,8 +353,249 @@ export const chatMethods = {
     // 注意：先保护代码块内容，避免后续换行/加粗替换污染 XML,
 
     finalizeMessage(element, text) {
+        delete element.dataset.streamText;
+        delete element.dataset.streamFormatted;
+        element.__streamTextNode = null;
         element.innerHTML = this.formatMessage(text);
-        this.addTreeBlocks(text, element.closest('.message'));
+        const messageEl = element.closest('.message');
+        this.addTreeBlocks(text, messageEl);
+        if (messageEl && messageEl.classList.contains('assistant-message')) this.appendAssistantActions(messageEl);
         this.scrollToBottom();
     },
+
+    stopGenerating() {
+        if (this.currentAbortController) this.currentAbortController.abort();
+    },
+
+    appendUserActions(messageDiv, message) {
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        actions.innerHTML = '<button class="tia-btn is-ghost is-xs" type="button" data-edit-resend>编辑重发</button>';
+        const btn = actions.querySelector('[data-edit-resend]');
+        btn.addEventListener('click', () => {
+            if (this.isResponding) return;
+            this.userInput.value = message;
+            let cursor = messageDiv;
+            while (cursor) {
+                const next = cursor.nextElementSibling;
+                cursor.remove();
+                cursor = next;
+            }
+            this.userInput.focus();
+        });
+        messageDiv.appendChild(actions);
+    },
+
+    appendAssistantActions(messageDiv) {
+        if (!messageDiv || messageDiv.querySelector('[data-regenerate]')) return;
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        actions.innerHTML = '<button class="tia-btn is-ghost is-xs" type="button" data-regenerate>重新生成</button>';
+        const btn = actions.querySelector('[data-regenerate]');
+        btn.addEventListener('click', () => {
+            if (this.isResponding) return;
+            const previous = this.findPreviousUserMessage(messageDiv);
+            if (!previous) return;
+            messageDiv.remove();
+            this.isRegenerating = true;
+            this.getAIResponse(previous);
+        });
+        messageDiv.appendChild(actions);
+    },
+
+    findPreviousUserMessage(messageDiv) {
+        let cursor = messageDiv.previousElementSibling;
+        while (cursor) {
+            if (cursor.classList.contains('user-message')) {
+                const content = cursor.querySelector('.message-content');
+                return content ? content.textContent.trim() : '';
+            }
+            cursor = cursor.previousElementSibling;
+        }
+        return '';
+    },
+
+    collectVisibleHistory() {
+        return Array.from(this.messagesContainer.querySelectorAll('.message')).map((message) => {
+            const content = message.querySelector('.message-content');
+            return {
+                role: message.classList.contains('user-message') ? 'user' : 'assistant',
+                content: content ? content.textContent.trim() : ''
+            };
+        }).filter(item => item.content);
+    },
+
+    async loadChatHistory() {
+        try {
+            const r = await fetch('/api/chat/history', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const j = await r.json().catch(() => null);
+            if (!j || !j.success || !Array.isArray(j.messages) || !j.messages.length) return;
+            this.messagesContainer.innerHTML = '';
+            for (const item of j.messages) {
+                if (item.role === 'user') this.addUserMessage(item.content);
+                else this.finalizeMessage(this.addAssistantMessage('', true), item.content);
+            }
+        } catch {
+            // 历史恢复失败不阻塞工作台。
+        }
+    },
+
+    // TASK-009: 上下文指示条
+    projectContextAllowed() {
+        return localStorage.getItem('allowProjectContext') !== 'false';
+    },
+
+    projectContextAllVariables() {
+        return localStorage.getItem('projectContextAllVariables') === 'true';
+    },
+
+    initializeProjectContextBar() {
+        const allow = document.getElementById('ctxAllow');
+        const allVars = document.getElementById('ctxAllVars');
+        const refresh = document.getElementById('ctxRefresh');
+        const detail = document.getElementById('ctxDetail');
+
+        if (allow && !allow.dataset.bound) {
+            allow.dataset.bound = '1';
+            allow.checked = this.projectContextAllowed();
+            allow.addEventListener('change', () => {
+                localStorage.setItem('allowProjectContext', allow.checked ? 'true' : 'false');
+                if (!allow.checked) this.updateContextBar({ enabled: false });
+                else this.loadContextStatus();
+            });
+        }
+        if (allVars && !allVars.dataset.bound) {
+            allVars.dataset.bound = '1';
+            allVars.checked = this.projectContextAllVariables();
+            allVars.addEventListener('change', () => {
+                localStorage.setItem('projectContextAllVariables', allVars.checked ? 'true' : 'false');
+                if (this.projectContextAllowed()) this.refreshContext();
+            });
+        }
+        if (refresh && !refresh.dataset.bound) {
+            refresh.dataset.bound = '1';
+            refresh.addEventListener('click', () => this.refreshContext());
+        }
+        if (detail && !detail.dataset.bound) {
+            detail.dataset.bound = '1';
+            detail.addEventListener('click', () => this.toggleContextDetail());
+        }
+        if (!this.projectContextAllowed()) this.updateContextBar({ enabled: false });
+        else this.loadContextStatus();
+    },
+
+    updateContextBar(status) {
+        const led = document.getElementById('ctxLed');
+        const text = document.getElementById('ctxText');
+        if (!led || !text) return;
+
+        if (status.enabled === false) {
+            led.className = 'tia-led is-idle';
+            text.textContent = '工程上下文未发送给 AI';
+        } else if (status.connected) {
+            led.className = 'tia-led is-ok';
+            const vars = status.totalVars || status.variableCount || 0;
+            const chars = status.charCount ? ` · ${status.charCount} 字` : '';
+            text.textContent = `已连接 ${status.project || '当前工程'} · ${status.blockCount || 0} 个块 · ${vars} 个变量${chars}`;
+        } else {
+            led.className = 'tia-led is-idle';
+            text.textContent = '未连接博途 —— AI 将给出通用示例，地址需自行调整';
+        }
+    },
+
+    async loadContextStatus() {
+        try {
+            const r = await fetch('/api/chat/context', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const j = await r.json();
+            if (j.success && j.context) this.updateContextBar(j.context);
+        } catch {
+            this.updateContextBar({ connected: false });
+        }
+    },
+
+    refreshContext() {
+        const detailBox = document.getElementById('ctxDetailBox');
+        if (!this.projectContextAllowed()) {
+            this.updateContextBar({ enabled: false });
+            return;
+        }
+        if (detailBox) {
+            detailBox.classList.add('hidden');
+            detailBox.textContent = '刷新中...';
+            detailBox.classList.remove('hidden');
+        }
+
+        fetch('/api/chat/context/refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                forceRefresh: true,
+                includeAllVariables: this.projectContextAllVariables()
+            })
+        }).then(r => r.json()).then(j => {
+            if (j.success && j.context) {
+                this.updateContextBar(j.context);
+                this.lastProjectContextDetails = j.details || { prompt: j.summary || '' };
+                if (detailBox) {
+                    this.renderContextDetail(detailBox, this.lastProjectContextDetails || j.context);
+                }
+            }
+        }).catch(() => {
+            if (detailBox) detailBox.textContent = '刷新失败';
+        });
+    },
+
+    toggleContextDetail() {
+        const detailBox = document.getElementById('ctxDetailBox');
+        if (!detailBox) return;
+
+        if (detailBox.classList.contains('hidden')) {
+            detailBox.classList.remove('hidden');
+            detailBox.textContent = '加载中...';
+
+            if (this.lastProjectContextDetails) {
+                this.renderContextDetail(detailBox, this.lastProjectContextDetails);
+                return;
+            }
+
+            fetch('/api/chat/context', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            }).then(r => r.json()).then(j => {
+                if (j.success && j.context) {
+                    this.renderContextDetail(detailBox, j.context);
+                } else {
+                    detailBox.textContent = '暂无上下文数据';
+                }
+            }).catch(() => {
+                detailBox.textContent = '加载失败';
+            });
+        } else {
+            detailBox.classList.add('hidden');
+        }
+    },
+
+    renderContextDetail(detailBox, payload) {
+        const text = payload && (payload.prompt || payload.summary)
+            ? (payload.prompt || payload.summary)
+            : JSON.stringify(payload || {}, null, 2);
+        detailBox.innerHTML = `<pre>${this.escapeHtml(text || '暂无上下文数据')}</pre>`;
+    }
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (window.plcAssistant && typeof window.plcAssistant.initializeProjectContextBar === 'function') {
+            window.plcAssistant.initializeProjectContextBar();
+        }
+        if (window.plcAssistant && typeof window.plcAssistant.loadChatHistory === 'function') {
+            window.plcAssistant.loadChatHistory();
+        }
+    }, 0);
+});

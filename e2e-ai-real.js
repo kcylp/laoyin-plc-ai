@@ -8,8 +8,17 @@ const SYSTEM_PROMPTS = require('./prompts');
 const { resolvePromptContent } = require('./prompt-router');
 const { detectPayloadKind, preflightImport, importToTia, stopSharedEngineClients } = require('./engineer-yin-bridge');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'laoyin-plc-2026-change-me';
-const USER_ID = 1; // yinlipeng(生产账号,已配供应商)
+const JWT_SECRET = process.env.JWT_SECRET;
+const USER_ID = Number(process.env.E2E_USER_ID || 1);
+
+if (!JWT_SECRET) {
+    console.error('FAIL: JWT_SECRET environment variable is required for real AI E2E verification.');
+    process.exit(1);
+}
+if (!Number.isInteger(USER_ID) || USER_ID <= 0) {
+    console.error('FAIL: E2E_USER_ID must be a positive integer when provided.');
+    process.exit(1);
+}
 
 async function aiChat(modelId, systemPrompt, userReq) {
     let text = '';

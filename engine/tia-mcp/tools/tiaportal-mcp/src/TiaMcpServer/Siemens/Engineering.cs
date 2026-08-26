@@ -30,33 +30,32 @@ namespace TiaMcpServer.Siemens
                 return null;
             }
 
-            var tiaInstallPath = GetTiaPortalInstallPath();
-            if (string.IsNullOrEmpty(tiaInstallPath))
+            var installProbes = GetTiaPortalInstallPathCandidates().ToList();
+            var installProbe = installProbes.FirstOrDefault(p => p.IsUsable);
+            if (installProbe == null)
             {
-                throw new InvalidOperationException($"Could not find TIA Portal installation path for version {TiaMajorVersion} in the registry.");
+                throw new InvalidOperationException(BuildInstallPathFailureMessage(installProbes));
             }
 
             var tiaMajorVersionString = TiaMajorVersion.ToString();
-            var searchDirectories = new[]
-            {
-                Path.Combine(tiaInstallPath, "PublicAPI", $"V{tiaMajorVersionString}"),
-                Path.Combine(tiaInstallPath, "Bin", "PublicAPI")
-            };
+            var searchDirectories = GetAssemblySearchDirectories(installProbe, tiaMajorVersionString).ToList();
 
             // IEnumerable without given majorVersionString
-            var excludedTiaMajorVersions = new[] { "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20" }
-                                    .Where(v => v != $"V{tiaMajorVersionString}");
+            var excludedTiaMajorVersions = new HashSet<string>(new[] { "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20" }
+                                    .Where(v => v != $"V{tiaMajorVersionString}"), StringComparer.OrdinalIgnoreCase);
+            var attempts = new List<DirectoryProbeResult>();
 
             foreach (var dir in searchDirectories)
             {
-                var assemblyPath = FindAssemblyRecursive(dir, assemblyName.Name + ".dll", excludedTiaMajorVersions);
+                var assemblyPath = FindAssemblyRecursive(dir.Path, assemblyName.Name + ".dll", excludedTiaMajorVersions, out var failureReason);
+                attempts.Add(new DirectoryProbeResult(dir.Source, dir.Path, assemblyPath != null ? "found" : failureReason));
                 if (assemblyPath != null)
                 {
                     return Assembly.LoadFrom(assemblyPath);
                 }
             }
 
-            throw new FileNotFoundException($"Could not find DLL '{assemblyName.Name}' for TIA Portal version {TiaMajorVersion} in the installation directories.");
+            throw new FileNotFoundException(BuildAssemblyFailureMessage(assemblyName.Name, attempts));
         }
 
         /// <summary>
@@ -132,35 +131,38 @@ namespace TiaMcpServer.Siemens
 
         private static string? GetTiaPortalInstallPath()
         {
+            return GetTiaPortalInstallPathCandidates().FirstOrDefault(p => p.IsUsable)?.Path;
+        }
+
+        private static IEnumerable<PathProbeResult> GetTiaPortalInstallPathCandidates()
+        {
             // 1. Explicit CLI override (--tia-portal-location). Highest priority.
-            if (!string.IsNullOrWhiteSpace(TiaPortalLocationOverride) && Directory.Exists(TiaPortalLocationOverride))
+            if (!string.IsNullOrWhiteSpace(TiaPortalLocationOverride))
             {
-                return TiaPortalLocationOverride;
+                var path = TiaPortalLocationOverride!.TrimEnd('\\', '/');
+                yield return new PathProbeResult("Override (--tia-portal-location)", path, Directory.Exists(path), Directory.Exists(path) ? "usable" : "directory does not exist");
             }
 
             // 2. Version-specific environment variable. Do not silently use a
             // different TIA major version on machines with side-by-side installs.
             var env = Environment.GetEnvironmentVariable("TiaPortalLocation");
-            bool envUsable = !string.IsNullOrWhiteSpace(env) && Directory.Exists(env);
-            if (envUsable && PathMatchesVersion(env!, TiaMajorVersion))
+            if (!string.IsNullOrWhiteSpace(env))
             {
-                return env;
+                var path = env.TrimEnd('\\', '/');
+                var exists = Directory.Exists(path);
+                var matchesVersion = exists && PathMatchesVersion(path, TiaMajorVersion);
+                yield return new PathProbeResult("Environment TiaPortalLocation", path, matchesVersion,
+                    !exists ? "directory does not exist" : matchesVersion ? "usable" : $"path version does not match V{TiaMajorVersion}");
             }
 
             // 3. Siemens' optional _InstalledSW TIA_Opns registration.
             var installedRoot = $@"SOFTWARE\Siemens\Automation\_InstalledSW\TIAP{TiaMajorVersion}";
             var tiaOpnsPath = ReadRegistryPath(installedRoot + @"\TIA_Opns");
-            if (Directory.Exists(tiaOpnsPath))
-            {
-                return tiaOpnsPath;
-            }
+            yield return CreatePathProbe("Registry TIA_Opns", tiaOpnsPath);
 
             // 4. EditionMain is present on installations where TIA_Opns is not.
             var editionPath = ReadRegistryPath(installedRoot + @"\EditionMain");
-            if (Directory.Exists(editionPath))
-            {
-                return editionPath;
-            }
+            yield return CreatePathProbe("Registry EditionMain", editionPath);
 
             // 5. The Openness hive records the exact Siemens.Engineering.Base.dll
             // location. Derive Portal Vxx from that path when the vendor's
@@ -170,10 +172,7 @@ namespace TiaMcpServer.Siemens
                 var opennessKey = $@"SOFTWARE\Siemens\Automation\Openness\{TiaMajorVersion}.0\PublicAPI\{TiaMajorVersion}.0.0.0\{framework}";
                 var assemblyPath = ReadRegistryValue(opennessKey, "Siemens.Engineering.Base");
                 var opennessRoot = PortalRootFromAssemblyPath(assemblyPath);
-                if (Directory.Exists(opennessRoot))
-                {
-                    return opennessRoot;
-                }
+                yield return CreatePathProbe($"Registry Openness {framework}", opennessRoot);
             }
 
             // 6. Standard Program Files location, including non-registry
@@ -181,20 +180,27 @@ namespace TiaMcpServer.Siemens
             var defaultRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "Siemens", "Automation", $"Portal V{TiaMajorVersion}");
-            if (Directory.Exists(defaultRoot))
-            {
-                return defaultRoot;
-            }
+            yield return CreatePathProbe("Default Program Files root", defaultRoot);
 
             // A version-mismatched env var is deliberately not used: loading a
             // V21 assembly into the V20 process produces a misleading CLR error.
-            return null;
+        }
+
+        private static PathProbeResult CreatePathProbe(string source, string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return new PathProbeResult(source, null, false, "not configured");
+            }
+            var normalized = path!.TrimEnd('\\', '/');
+            var exists = Directory.Exists(normalized);
+            return new PathProbeResult(source, normalized, exists, exists ? "usable" : "directory does not exist");
         }
 
         private static string? ReadRegistryPath(string keyPath)
         {
             var path = ReadRegistryValue(keyPath, "Path");
-            return string.IsNullOrWhiteSpace(path) ? null : path.TrimEnd('\\', '/');
+            return string.IsNullOrWhiteSpace(path) ? null : path!.TrimEnd('\\', '/');
         }
 
         private static string? ReadRegistryValue(string keyPath, string valueName)
@@ -222,7 +228,7 @@ namespace TiaMcpServer.Siemens
         private static string? PortalRootFromAssemblyPath(string? assemblyPath)
         {
             if (string.IsNullOrWhiteSpace(assemblyPath)) return null;
-            var normalized = assemblyPath.Trim().TrimEnd('\\', '/');
+            var normalized = assemblyPath!.Trim().TrimEnd('\\', '/');
             var marker = $"\\PublicAPI\\V{TiaMajorVersion}\\";
             var index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
             if (index < 0)
@@ -241,35 +247,127 @@ namespace TiaMcpServer.Siemens
             return int.TryParse(m.Groups[1].Value, out int pv) && pv == version;
         }
 
-        private static string? FindAssemblyRecursive(string directory, string fileName, IEnumerable<string> excludedTiaMajorVersions)
+        private static IEnumerable<DirectoryProbe> GetAssemblySearchDirectories(PathProbeResult installRoot, string tiaMajorVersionString)
+        {
+            if (string.IsNullOrWhiteSpace(installRoot.Path)) yield break;
+            var root = installRoot.Path;
+            yield return new DirectoryProbe(installRoot.Source, Path.Combine(root, "PublicAPI", $"V{tiaMajorVersionString}"));
+            yield return new DirectoryProbe(installRoot.Source, Path.Combine(root, "PublicAPI", $"V{tiaMajorVersionString}", "WinCCUnified"));
+            yield return new DirectoryProbe(installRoot.Source, Path.Combine(root, "Bin", "PublicAPI"));
+            yield return new DirectoryProbe(installRoot.Source, Path.Combine(root, "Bin"));
+        }
+
+        private static string BuildInstallPathFailureMessage(IReadOnlyList<PathProbeResult> probes)
+        {
+            var lines = new List<string>
+            {
+                $"Could not find TIA Portal installation path for version {TiaMajorVersion}.",
+                "Install root probes:"
+            };
+            foreach (var probe in probes)
+            {
+                lines.Add($"- {probe.Source}: {(string.IsNullOrWhiteSpace(probe.Path) ? "<not configured>" : probe.Path)} => {probe.Reason}");
+            }
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string BuildAssemblyFailureMessage(string assemblyName, IReadOnlyList<DirectoryProbeResult> attempts)
+        {
+            var lines = new List<string>
+            {
+                $"Could not find DLL '{assemblyName}' for TIA Portal version {TiaMajorVersion}.",
+                "Attempted directories:"
+            };
+            foreach (var attempt in attempts)
+            {
+                lines.Add($"- {attempt.Source}: {attempt.Path} => {attempt.Reason}");
+            }
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string? FindAssemblyRecursive(string directory, string fileName, ISet<string> excludedTiaMajorVersions, out string failureReason)
         {
             if (!Directory.Exists(directory))
             {
+                failureReason = "directory does not exist";
                 return null;
             }
 
             var filePath = Path.Combine(directory, fileName);
             if (File.Exists(filePath))
             {
+                failureReason = "found";
                 return filePath;
             }
 
-            foreach (var subDir in Directory.GetDirectories(directory))
+            try
             {
-                var subDirName = new DirectoryInfo(subDir).Name;
-                if (excludedTiaMajorVersions.Contains(subDirName))
+                foreach (var subDir in Directory.GetDirectories(directory))
                 {
-                    continue;
-                }
+                    var subDirName = new DirectoryInfo(subDir).Name;
+                    if (excludedTiaMajorVersions.Contains(subDirName))
+                    {
+                        continue;
+                    }
 
-                var result = FindAssemblyRecursive(subDir, fileName, excludedTiaMajorVersions);
-                if (result != null)
-                {
-                    return result;
+                    var result = FindAssemblyRecursive(subDir, fileName, excludedTiaMajorVersions, out _);
+                    if (result != null)
+                    {
+                        failureReason = "found";
+                        return result;
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                failureReason = $"{ex.GetType().Name}: {ex.Message}";
+                return null;
+            }
 
+            failureReason = "DLL not found";
             return null;
+        }
+
+        private sealed class PathProbeResult
+        {
+            public PathProbeResult(string source, string? path, bool isUsable, string reason)
+            {
+                Source = source;
+                Path = path;
+                IsUsable = isUsable;
+                Reason = reason;
+            }
+
+            public string Source { get; }
+            public string? Path { get; }
+            public bool IsUsable { get; }
+            public string Reason { get; }
+        }
+
+        private sealed class DirectoryProbe
+        {
+            public DirectoryProbe(string source, string path)
+            {
+                Source = source;
+                Path = path;
+            }
+
+            public string Source { get; }
+            public string Path { get; }
+        }
+
+        private sealed class DirectoryProbeResult
+        {
+            public DirectoryProbeResult(string source, string path, string reason)
+            {
+                Source = source;
+                Path = path;
+                Reason = reason;
+            }
+
+            public string Source { get; }
+            public string Path { get; }
+            public string Reason { get; }
         }
     }
 }

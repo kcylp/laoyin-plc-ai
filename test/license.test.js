@@ -77,3 +77,29 @@ test('source-mode server exits 78 on tampered license without leaking paths or s
     assert.equal(stderr.includes('LICENSE_REQUIRED'), false, 'stderr must not leak the internal error id');
     assert.equal(stderr.includes('Error'), false, 'stderr must not contain a Node error header');
 });
+
+test('source-mode server fails closed with exit 79 when security secrets are missing outside test harness', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'laoyin-auth-'));
+    const license = freshLicense(root);
+    license.ensureLicense();
+
+    const serverPath = path.join(__dirname, '..', 'server.js');
+    const env = { ...process.env, LOCALAPPDATA: root, PORT: '0', JWT_SECRET: '', ADMIN_KEY: '' };
+    delete env.NODE_TEST_CONTEXT;
+    delete env.NODE_TEST_WORKER_ID;
+    delete env.DB_PATH;
+
+    const r = spawnSync(process.execPath, [serverPath], {
+        cwd: path.dirname(serverPath),
+        env,
+        timeout: 15000,
+        encoding: 'utf8',
+    });
+
+    assert.equal(r.status, 79);
+    const stderr = r.stderr || '';
+    assert.match(stderr, /启动失败：安全密钥未配置或强度不足。绿色版请通过启动器启动/);
+    assert.equal(stderr.includes(root), false, 'stderr must not contain the temp user root path');
+    assert.equal(stderr.includes(' at '), false, 'stderr must not contain stack trace frames');
+    assert.equal(stderr.includes('node:internal'), false, 'stderr must not contain Node internals');
+});

@@ -12,6 +12,7 @@ if (!licenseResult.ok) {
     console.error(licenseResult.message);
     process.exit(78);
 }
+require('./lib/auth').assertSecurityConfig();
 const APP_ROOT = process.env.APP_ROOT || __dirname;
 const { db } = require('./lib/db');
 const { backupDatabaseOnStartup } = require('./lib/db-backup');
@@ -38,32 +39,20 @@ const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
 const registrationApprovalRequired = String(process.env.REGISTRATION_APPROVAL_REQUIRED || '').toLowerCase() === 'true';
 let prewarmStatus = 'off';
 initLlm(db, JWT_SECRET);
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 installLauncherShutdown(app, localOnly);
-// ---------- 敏感文件访问拦截（必须先于 express.static） ----------
-app.use((req, res, next) => {
-    const sensitive =
-        /\.(env|db|md|txt|log|toml)$/i.test(req.path) ||
-        /^\/?(server|prompts|llm|engineer-yin-bridge|package|package-lock|\.env)\.?/i.test(req.path) ||
-        req.path.includes('.env') ||
-        req.path.includes('.db') ||
-        req.path.includes('node_modules');
-    if (sensitive) return res.status(403).json({ success: false, message: '禁止访问' });
+// ---------- 前端静态白名单：项目源码与运行数据一律不进入 HTTP 文件服务 ----------
+const FRONTEND_PAGES = ['login.html', 'index.html', 'settings.html', 'admin.html', 'env-check.html', 'upgrade.html'];
+const FRONTEND_ASSETS = ['login.css', 'login.js', 'admin.css', 'admin.js', 'operations.css', 'upgrade.css', 'upgrade.js', 'ai-models.js', 'plc-language.js', 'tia-confirmation.js', 'tia-import-state.js'];
+function noStore(req, res, next) {
+    res.set({ 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, max-age=0, must-revalidate', Pragma: 'no-cache', Expires: '0' });
     next();
-});
-// 静态文件（仅前端资源）。HTML/JS/CSS 禁缓存，避免现场调试时浏览器继续执行旧前端。
-const NO_STORE_STATIC_EXTENSIONS = new Set(['.html', '.js', '.css']);
-app.use(express.static(APP_ROOT, {
-    index: 'login.html',
-    setHeaders(res, filePath) {
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        if (NO_STORE_STATIC_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
-            res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-        }
-    }
-}));
+}
+for (const file of [...FRONTEND_PAGES, ...FRONTEND_ASSETS]) {
+    app.get('/' + file, noStore, (req, res) => res.sendFile(path.join(APP_ROOT, file)));
+}
+app.use('/web', noStore, express.static(path.join(APP_ROOT, 'web'), { index: false }));
+app.get('/favicon.ico', noStore, (req, res) => res.status(204).end());
 const deps = {
     db, sendMail, htmlEscape, ADMIN_EMAIL, authenticateToken, localOnly, checkAdmin, JWT_SECRET, ADMIN_KEY,
     ...models, ...queue, ...history, ...mcpHelpers, ...bridge,
@@ -78,7 +67,7 @@ app.use('/api', createTiaRoutes.createLegacyValidateRoutes(deps));
 app.use('/api/tia/mcp', createTiaMcpRoutes(deps));
 app.use('/api/tia', createTiaRoutes(deps));
 app.get('/api/license', (req, res) => res.json(publicStatus()));
-app.get('/', (req, res) => res.sendFile(path.join(APP_ROOT, 'login.html')));
+app.get('/', noStore, (req, res) => res.sendFile(path.join(APP_ROOT, 'login.html')));
 app.use((err, req, res, next) => {
     console.error(`[ERROR] ${req.method} ${req.url}:`, err.message);
     res.status(500).json({ success: false, message: '服务器内部错误' });
@@ -114,7 +103,7 @@ function startTiaPrewarm() {
             });
     }, 3000);
 }
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
     console.log('==============================================');
     console.log('  老殷工控PLC - PLC编程AI助手 已启动');
     console.log(`  地址: ${SITE_URL}`);

@@ -7,7 +7,7 @@ const os = require('node:os');
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const ctx = JSON.parse(fs.readFileSync(path.join(__dirname, 'verify-context.json'), 'utf8'));
-const SHOT_DIR = 'F:/工控软件/老殷工控PLC助手/work/browser-verify';
+const SHOT_DIR = __dirname;
 fs.mkdirSync(SHOT_DIR, { recursive: true });
 
 const results = {};

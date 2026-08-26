@@ -22,7 +22,10 @@ function Get-YinTiaInstalls {
 
         $engVersion = ''      # e.g. "V21"
         $asmVersion = ''      # e.g. "21.0.0.0"
-        $net48Dir   = ''      # resolved net48 folder
+        $net48Dir   = ''      # resolved public API folder
+        $portalRoot = ''
+        $pathSource = ''
+        $opennessDll = ''
         $assemblyVer = $verNode.PSChildName  # e.g. "21.0"
 
         $pubApi = Join-Path $verNode.PSPath 'PublicAPI'
@@ -37,27 +40,63 @@ function Get-YinTiaInstalls {
                 if ($props) {
                     $engVersion = $props.EngineeringVersion
                 }
+
+                # Siemens records the authoritative assembly path either on the
+                # assembly node itself or on a net48/net47 child node.
+                $propertyNodes = @($asmNode)
+                $propertyNodes += @(Get-ChildItem $asmNode.PSPath -ErrorAction SilentlyContinue |
+                    Where-Object { $_.PSChildName -match '^net4[578]$' })
+                foreach ($propertyNode in $propertyNodes) {
+                    $dllProps = Get-ItemProperty $propertyNode.PSPath -ErrorAction SilentlyContinue
+                    if (-not $dllProps) { continue }
+                    foreach ($valueName in @('Siemens.Engineering.Base', 'Siemens.Engineering')) {
+                        $candidateDll = [string]$dllProps.$valueName
+                        if ($candidateDll -and (Test-Path -LiteralPath $candidateDll -PathType Leaf)) {
+                            $opennessDll = $candidateDll
+                            $net48Dir = Split-Path -Parent $candidateDll
+                            $portalRoot = $candidateDll -replace '(?i)[\\/]PublicAPI[\\/]V?\d+(?:\.\d+\.\d+\.\d+)?[\\/]net4[578][\\/][^\\/]+\.dll$', ''
+                            $pathSource = 'registry'
+                            break
+                        }
+                    }
+                    if ($opennessDll) { break }
+                }
             }
         }
 
-        # net48 folder = C:\Program Files\Siemens\Automation\Portal <EngVer>\PublicAPI\<EngVer>\net48
-        if ($engVersion) {
+        # Last-resort compatibility fallback for older installations that do not
+        # record assembly values. Mark it so diagnostics never report it as fact.
+        if (-not $net48Dir -and $engVersion) {
             $base = Join-Path $env:ProgramFiles "Siemens\Automation\Portal $engVersion\PublicAPI\$engVersion"
             foreach ($sub in @('net48', 'net47', '')) {
                 $cand = if ($sub) { Join-Path $base $sub } else { $base }
                 if ($cand -and (Test-Path $cand)) {
                     $net48Dir = $cand
+                    $portalRoot = Join-Path $env:ProgramFiles "Siemens\Automation\Portal $engVersion"
+                    $pathSource = 'guessed'
+                    $opennessDll = Join-Path $net48Dir 'Siemens.Engineering.Base.dll'
                     break
                 }
             }
         }
 
+        $major = 0
+        if ($engVersion -match 'V(\d+)') { $major = [int]$Matches[1] }
+
         $found += [pscustomobject]@{
+            Major              = $major
             EngineeringVersion = $engVersion      # "V21"
             AssemblyVersion    = $asmVersion      # "21.0.0.0"
             RegistryVersion    = $assemblyVer     # "21.0"
             Net48Dir           = $net48Dir
-            OpennessDll        = Join-Path $net48Dir 'Siemens.Engineering.Base.dll'
+            PublicApiDir       = $net48Dir
+            PortalRoot         = $portalRoot
+            PathSource         = $pathSource
+            OpennessDll        = $opennessDll
+            DllsPresent        = [pscustomobject]@{
+                EngineeringBase = [bool]($net48Dir -and (Test-Path -LiteralPath (Join-Path $net48Dir 'Siemens.Engineering.Base.dll') -PathType Leaf))
+                Engineering     = [bool]($net48Dir -and (Test-Path -LiteralPath (Join-Path $net48Dir 'Siemens.Engineering.dll') -PathType Leaf))
+            }
         }
     }
 
@@ -85,8 +124,13 @@ function Get-YinTiaInstall {
 
     return [pscustomobject]@{
         EngineeringVersion = $best.EngineeringVersion
+        Major              = $best.Major
         AssemblyVersion    = $best.AssemblyVersion
         Net48Dir           = $best.Net48Dir
+        PublicApiDir       = $best.PublicApiDir
+        PortalRoot         = $best.PortalRoot
+        PathSource         = $best.PathSource
+        DllsPresent        = $best.DllsPresent
         OpennessDll        = $best.OpennessDll
         AllInstalled       = @($all | ForEach-Object { $_.EngineeringVersion } | Where-Object { $_ })
     }

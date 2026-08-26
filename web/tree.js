@@ -71,7 +71,7 @@ export const treeMethods = {
 
     renderProjectTree() {
         if (!this.projectTree) return;
-        const open = JSON.parse(localStorage.getItem('plcTreeOpen') || '{}');
+        const open = JSON.parse(localStorage.getItem('plcTreeOpenV2') || '{}');
         // 系列/语言选择已由顶部 ribbon 承担,左树不再重复(2026-08-05 用户定)
         const folders = [
             ['blocks', '程序块（会话产物）'],
@@ -81,12 +81,18 @@ export const treeMethods = {
         const folder = (key, label) => `<div class="tia-tree-node is-folder ${isOpen(key) ? 'is-open' : ''}" data-folder="${key}" data-level="1">${label}</div>`;
         const node = (label, attrs, active) => `<button class="tia-tree-node ${active ? 'is-active' : ''}" type="button" data-level="2" ${attrs}>${label}</button>`;
         this.projectTree.innerHTML = `<div class="tia-tree-node" data-level="0">老殷工控PLC</div>${folder('blocks', '程序块（会话产物）')}<div data-tree-section="blocks"></div>${folder('imports', '导入包')}<div data-tree-section="imports"></div>${folder('diagnostics', '诊断')}<div data-tree-section="diagnostics">${node('写入历史', 'data-tree-hist', false)}${node('环境自检', 'data-tree-link="env-check.html"', false)}${node('AI 供应商', 'data-tree-link="settings.html"', false)}</div>`;
+        folders.forEach(([key]) => {
+            const section = this.projectTree.querySelector(`[data-tree-section="${key}"]`);
+            section.hidden = !isOpen(key);
+        });
         this.projectTree.querySelectorAll('[data-folder]').forEach(el => el.addEventListener('click', () => {
             const key = el.dataset.folder;
-            open[key] = !isOpen(key);
-            localStorage.setItem('plcTreeOpen', JSON.stringify(open));
-            this.projectTree.querySelector(`[data-tree-section="${key === 'language' ? 'language' : key}"]`).hidden = isOpen(key);
-            el.classList.toggle('is-open', !isOpen(key));
+            const nextOpen = !isOpen(key);
+            open[key] = nextOpen;
+            localStorage.setItem('plcTreeOpenV2', JSON.stringify(open));
+            const section = this.projectTree.querySelector(`[data-tree-section="${key}"]`);
+            section.hidden = !nextOpen;
+            el.classList.toggle('is-open', nextOpen);
         }));
         this.projectTree.querySelectorAll('[data-tree-series]').forEach(el => el.addEventListener('click', () => this.setSeries(el.dataset.treeSeries)));
         this.projectTree.querySelectorAll('[data-tree-lang]').forEach(el => el.addEventListener('click', () => this.setLang(el.dataset.treeLang)));

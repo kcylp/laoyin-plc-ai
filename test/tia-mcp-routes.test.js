@@ -7,6 +7,8 @@ const { backendFiles, readBackendFile, readBackendSource, root } = require('./he
 const serverSrc = readBackendSource();
 const serverEntrySrc = readBackendFile('server.js');
 const tiaMcpRoutesSrc = readBackendFile('routes/tia-mcp.js');
+const adminRoutesSrc = readBackendFile('routes/admin.js');
+const envDiagnoseSrc = readBackendFile('lib/env-diagnose.js');
 
 function readClientBundle() {
     return [
@@ -62,19 +64,38 @@ test('MCP capability layer is wired additively with auth + localOnly', () => {
     assert.match(tiaMcpRoutesSrc, /'\^' \+ escapeRegexLiteral\(targetName\) \+ '\$'/);
 });
 
-test('all TIA-touching operations share one mutual-exclusion queue (anti-conflict)', () => {
-    assert.match(serverSrc, /function enqueueTiaOp\(/);
-    // 自研引擎两条旧路径与 MCP 新路径都必须进同一个队列
-    assert.match(serverSrc, /enqueueTiaOp\(\(\) => preflightImport/);
-    assert.match(serverSrc, /enqueueTiaOp\(\(\) => importToTia/);
-    assert.match(serverSrc, /enqueueTiaOp\(\(\) => client\.callTool\(name, args, timeoutMs\)/);
+test('all TIA-touching operations share one observable mutual-exclusion queue (anti-conflict)', async () => {
+    const queue = require('../lib/tia-queue');
+    queue._resetForTests();
+    let active = 0;
+    let maxActive = 0;
+    const first = queue.enqueueTiaOp(async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise(resolve => setTimeout(resolve, 10));
+        active -= 1;
+        return 'first';
+    }, { label: '旧写入路径', timeoutMs: 1000 });
+    const second = queue.enqueueTiaOp(async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        active -= 1;
+        return 'second';
+    }, { label: 'MCP 工具路径', timeoutMs: 1000 });
+    assert.equal(queue.queueSnapshot().depth >= 1, true);
+    assert.deepEqual(await Promise.all([first, second]), ['first', 'second']);
+    assert.equal(maxActive, 1);
+    assert.equal(queue.queueSnapshot().depth, 0);
     // MCP connect 走 AttachToOpenProject,挂同一个已打开的工程
     assert.match(serverSrc, /AttachToOpenProject/);
 });
 
-test('dangerous MCP tools require explicit confirmation and are audit-logged', () => {
-    assert.match(serverSrc, /TIA_MCP_DANGEROUS = \/download\|delete\|remove\|force\|stop\|reset\/i/);
-    assert.match(serverSrc, /属危险操作\(下载\/删除类\),需要 confirmed:true/);
+test('MCP tools use a fail-closed confirmation classifier and are audit-logged', () => {
+    const { requiresTiaMcpConfirmation } = require('../lib/tia-mcp-helpers');
+    assert.equal(requiresTiaMcpConfirmation('GetProject'), false);
+    assert.equal(requiresTiaMcpConfirmation('ImportBlock'), true);
+    assert.equal(requiresTiaMcpConfirmation('FutureUnknownTool'), true);
+    assert.match(serverSrc, /需要 confirmed:true/);
     assert.match(serverSrc, /\[MCP\] 调用 \$\{name\} 用户=/);
 });
 
@@ -96,7 +117,10 @@ test('scaffold endpoint generates spec with OUR model stack, dryRun first, confi
 });
 
 test('fusion: env-check reports online engine, shutdown kills MCP child, branding is native', () => {
-    assert.match(serverSrc, /const mcpAvailable = getSharedClient\(\)\.available\(\)/);
+    assert.match(adminRoutesSrc, /router\.get\('\/env-check', authenticateToken, localOnly/);
+    assert.match(adminRoutesSrc, /runDiagnose\(\{ deep, deps: \{ db, \.\.\.envDiagnoseDeps \} \}\)/);
+    assert.match(envDiagnoseSrc, /mcp-runtime/);
+    assert.match(envDiagnoseSrc, /TiaMcpServer\.exe 缺失/);
     assert.match(serverSrc, /for \(const sig of \['SIGINT', 'SIGTERM', 'exit'\]\)/);
     const scriptSrc = readClientBundle();
     assert.ok(scriptSrc.includes('在线引擎已连接'));

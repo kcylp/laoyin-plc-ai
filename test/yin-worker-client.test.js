@@ -44,6 +44,38 @@ test('Yin worker client reports unavailable when executable is missing', () => {
     assert.throws(() => client.start(), /不存在/);
 });
 
+test('default Yin worker resolves Windows PowerShell to an absolute executable path', () => {
+    const client = new YinWorkerClient();
+    assert.equal(path.isAbsolute(client.exePath), true);
+    assert.match(client.exePath, /WindowsPowerShell[\\/]v1\.0[\\/]powershell\.exe$/i);
+});
+
+test('Yin worker ping failure carries sanitized recent stderr', async () => {
+    const client = new YinWorkerClient({ exePath: process.execPath, args: [FAKE_WORKER] });
+    client.start = () => {};
+    client._request = async () => ({ ok: false, pong: false });
+    client.stderrLog = [
+        'FATAL at C:\\Users\\alice\\secret\\yin_worker.ps1',
+        'Authorization: Bearer sk-live-secret',
+        'EngineeringSecurityException: access denied',
+    ];
+
+    await assert.rejects(
+        () => client.ensureReady(),
+        (error) => {
+            assert.match(error.message, /Yin worker ping 失败/);
+            assert.match(error.message, /EngineeringSecurityException: access denied/);
+            assert.doesNotMatch(error.message, /alice|sk-live-secret/);
+            assert.deepEqual(error.recentStderr, [
+                'FATAL at <path>',
+                '<credential-redacted>',
+                'EngineeringSecurityException: access denied',
+            ]);
+            return true;
+        },
+    );
+});
+
 test('Yin worker stays persistent by default for delayed write confirmations', () => {
     const old = process.env.YIN_WORKER_IDLE_MS;
     delete process.env.YIN_WORKER_IDLE_MS;

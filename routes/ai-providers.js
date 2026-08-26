@@ -5,24 +5,35 @@ const { fetchModelList, probeChatModel } = require('../llm');
 module.exports = function createAiProviderRoutes(deps) {
     const { db, authenticateToken, localOnly, JWT_SECRET, getCurrentModel, setProviderTestStatus, setModelTestStatus } = deps;
     const router = express.Router();
+    const keyResetMessage = '此 API Key 需要重新填写';
+
+    function readStoredKey(payload) {
+        const { decrypt } = require('../crypto-util');
+        const key = decrypt(payload, JWT_SECRET);
+        return typeof key === 'string' ? key : null;
+    }
 
 // ---------- 路由: AI 供应商管理（每用户独立） ----------
 // 列出当前用户的供应商（Key 只给掩码，附带已启用模型供卡片展示）
 router.get('/providers', authenticateToken, (req, res) => {
-    const { decrypt, maskKey } = require('../crypto-util');
+    const { maskKey } = require('../crypto-util');
     const rows = db.prepare('SELECT * FROM ai_providers WHERE user_id = ? ORDER BY id').all(req.user.id);
     const currentModel = getCurrentModel(req.user.id);
-    const masked = rows.map(r => ({
-        id: r.id,
-        name: r.name,
-        base_url: r.base_url,
-        api_key_masked: maskKey(decrypt(r.api_key, JWT_SECRET)),
-        wire_api: r.wire_api,
-        testStatus: r.test_status || 'unknown',
-        testMessage: r.test_message || '',
-        testedAt: r.tested_at || '',
-        models: db.prepare('SELECT id, model_id, label, context_length, enabled, test_status, test_message, tested_at FROM ai_models WHERE provider_id = ? AND enabled = 1 ORDER BY id').all(r.id)
-    }));
+    const masked = rows.map(r => {
+        const key = readStoredKey(r.api_key);
+        return {
+            id: r.id,
+            name: r.name,
+            base_url: r.base_url,
+            api_key_masked: key === null ? keyResetMessage : maskKey(key),
+            keyNeedsReset: key === null,
+            wire_api: r.wire_api,
+            testStatus: r.test_status || 'unknown',
+            testMessage: r.test_message || '',
+            testedAt: r.tested_at || '',
+            models: db.prepare('SELECT id, model_id, label, context_length, enabled, test_status, test_message, tested_at FROM ai_models WHERE provider_id = ? AND enabled = 1 ORDER BY id').all(r.id)
+        };
+    });
     res.json({ success: true, providers: masked, currentModelId: currentModel.id, currentModelLabel: currentModel.label });
 });
 
@@ -68,8 +79,9 @@ router.get('/providers/:id/key', authenticateToken, localOnly, (req, res) => {
     const pid = parseInt(req.params.id, 10);
     const row = db.prepare('SELECT api_key FROM ai_providers WHERE id = ? AND user_id = ?').get(pid, req.user.id);
     if (!row) return res.status(404).json({ success: false, message: '供应商不存在' });
-    const { decrypt } = require('../crypto-util');
-    res.json({ success: true, key: decrypt(row.api_key, JWT_SECRET) });
+    const key = readStoredKey(row.api_key);
+    if (key === null) return res.status(409).json({ success: false, message: keyResetMessage });
+    res.json({ success: true, key });
 });
 
 // 使用数据库中已保存的供应商配置测试连接，不向前端返回明文 Key。
@@ -79,8 +91,8 @@ router.post('/providers/:id/test', authenticateToken, async (req, res) => {
     const existing = db.prepare('SELECT * FROM ai_providers WHERE id = ? AND user_id = ?').get(pid, req.user.id);
     if (!existing) return res.status(404).json({ success: false, message: '供应商不存在' });
 
-    const { decrypt } = require('../crypto-util');
-    const key = decrypt(existing.api_key, JWT_SECRET);
+    const key = readStoredKey(existing.api_key);
+    if (key === null) return res.status(409).json({ success: false, message: keyResetMessage });
     const r = await fetchModelList(existing.base_url, key, existing.wire_api);
     if (!r.ok) {
         setProviderTestStatus(pid, 'failed', r.message);
@@ -140,11 +152,12 @@ router.post('/providers/:id/models', authenticateToken, async (req, res) => {
         return res.status(400).json({ success: false, message: '请至少选择一个模型' });
     }
 
-    const { decrypt } = require('../crypto-util');
+    const key = readStoredKey(existing.api_key);
+    if (key === null) return res.status(409).json({ success: false, message: keyResetMessage });
     // 网络探测在事务外执行（不持长事务）；探测结果随保存一起落库，回滚则状态一并回滚
     const probe = await probeChatModel({
         baseUrl: existing.base_url,
-        apiKey: decrypt(existing.api_key, JWT_SECRET),
+        apiKey: key,
         wireApi: existing.wire_api,
         model: models[0].id,
         providerName: existing.name,
