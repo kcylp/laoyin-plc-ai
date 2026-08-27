@@ -136,13 +136,10 @@ namespace TiaMcpServer.Siemens
             var plc = GetPlcSoftware(softwarePath);
             if (plc == null) return null;
 
-            // common shapes: plc.TagTables OR plc.TagTableGroup.TagTables
-            object? tables =
-                TryGetPropertyValue(plc, "TagTables") ??
-                TryGetPropertyValue(TryGetPropertyValue(plc, "TagTableGroup", "TagTableFolder") ?? plc, "TagTables");
-
-            if (tables == null) return new List<string>();
-            return TryListNamesFromCollection(tables, new[] { "TagTables" }, "TagTables");
+            // Enumerate from the folder/root object. Passing an already extracted
+            // TagTables collection would make the helper look for TagTables twice.
+            object tablesRoot = TryGetPropertyValue(plc, "TagTableGroup", "TagTableFolder") ?? plc;
+            return TryListNamesFromCollection(tablesRoot, new[] { "TagTables" }, "TagTables");
         }
 
         public bool ExportPlcTagTable(string softwarePath, string tagTableName, string exportPath)

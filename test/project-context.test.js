@@ -1,12 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
     buildProjectContextPrompt,
     createProjectContextService,
+    createTiaContextLoader,
     matchRelevantContext,
     summarizeProjectContext,
 } = require('../lib/project-context');
+
+const TAG_FIXTURE = fs.readFileSync(path.join(__dirname, 'fixtures', 'TASK014_Acceptance_IO.xml'), 'utf8');
 
 const sampleContext = {
     connected: true,
@@ -107,4 +112,53 @@ test('buildProjectContextPrompt is honest when TIA is not connected', () => {
     assert.match(prompt.text, /【当前博途工程】未连接博途/);
     assert.match(prompt.text, /以下地址为示例/);
     assert.equal(prompt.status.connected, false);
+});
+
+test('TIA context loader exports real tag tables and reports a nonzero variable count', async () => {
+    const client = {
+        callTool: async (name, args) => {
+            if (name === 'GetSoftwareTree') return { content: [{ type: 'text', text: JSON.stringify({ tree: 'PLC_1 CPU 1214C' }) }] };
+            if (name === 'GetPlcTagTables') return { content: [{ type: 'text', text: JSON.stringify({ items: ['TASK014_Acceptance_IO'] }) }] };
+            if (name === 'ExportPlcTagTable') {
+                fs.writeFileSync(args.exportPath, TAG_FIXTURE, 'utf8');
+                return { content: [{ type: 'text', text: JSON.stringify({ ExportPath: args.exportPath }) }] };
+            }
+            throw new Error(`unexpected tool ${name}`);
+        },
+        status: () => ({ tiaMajorVersion: 21 }),
+    };
+    const load = createTiaContextLoader({
+        enqueueTiaOp: fn => fn(),
+        mcpEnsureAttached: async () => ({ ok: true, project: 'TASK012A_MC_Oracle' }),
+        getMcpClient: () => client,
+        parseBlocksFromTree: () => [],
+    });
+
+    const context = await load();
+    const summary = summarizeProjectContext(context);
+
+    assert.equal(context.warnings.length, 0);
+    assert.equal(summary.variableCount, 10);
+    assert.match(summary.text, /共 1 张、10 个变量/);
+});
+
+test('TIA context loader keeps warning-based degradation when tag export fails', async () => {
+    const client = {
+        callTool: async (name) => {
+            if (name === 'GetSoftwareTree') return { content: [{ type: 'text', text: JSON.stringify({ tree: 'PLC_1' }) }] };
+            if (name === 'GetPlcTagTables') return { content: [{ type: 'text', text: JSON.stringify({ items: ['Broken'] }) }] };
+            throw new Error('export blocked');
+        },
+        status: () => ({}),
+    };
+    const load = createTiaContextLoader({
+        enqueueTiaOp: fn => fn(),
+        mcpEnsureAttached: async () => ({ ok: true, project: 'Demo' }),
+        getMcpClient: () => client,
+    });
+
+    const context = await load();
+
+    assert.deepEqual(context.tagTables, []);
+    assert.match(context.warnings.join('\n'), /变量表读取失败.*export blocked/);
 });

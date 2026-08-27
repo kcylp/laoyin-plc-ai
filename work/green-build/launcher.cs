@@ -15,7 +15,7 @@ using System.Drawing;
 sealed class GreenContext : ApplicationContext
 {
     const string BaseUrl = "http://127.0.0.1:3000";
-    const string CurrentVersion = "1.0.2";
+    const string CurrentVersion = "1.0.3";
     const string ManifestUrl = "https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/update-manifest.json";
     readonly string root;
     readonly string shutdownToken;

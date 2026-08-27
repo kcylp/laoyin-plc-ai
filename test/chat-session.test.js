@@ -109,6 +109,84 @@ test('chat persists completed turns, restores history, and clears it from SQLite
     });
 });
 
+test('chat appends backend soft guidance for off-topic requests without keyword gating', async () => {
+    let capturedMessages = null;
+    await serveChatRouter({
+        llmStream: async ({ messages, onDelta }) => {
+            capturedMessages = messages;
+            onDelta('我主要帮你处理 PLC 和工控自动化问题。');
+            return '我主要帮你处理 PLC 和工控自动化问题。';
+        },
+    }, async base => {
+        const response = await fetch(base + '/api/chat', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', authorization: 'Bearer test' },
+            body: JSON.stringify({ message: '帮我写一首诗', series: 's1200', lang: 'scl', includeContext: false }),
+        });
+        assert.equal(response.status, 200);
+        await response.text();
+    });
+
+    assert.ok(Array.isArray(capturedMessages));
+    assert.equal(capturedMessages[1].role, 'system');
+    assert.match(capturedMessages[1].content, /完全无关/);
+    assert.match(capturedMessages[1].content, /写诗、小说、通用闲聊/);
+    assert.match(capturedMessages[1].content, /宁可回答不可误拒/);
+    assert.match(capturedMessages[1].content, /两台泵轮换运行，间隔30秒/);
+    assert.deepEqual(capturedMessages.at(-1), { role: 'user', content: '帮我写一首诗' });
+});
+
+test('chat injects knowledge context before user history and exposes token status', async () => {
+    let capturedMessages = null;
+    let contextEvent = null;
+    await serveChatRouter({
+        llmStream: async ({ messages, onDelta }) => {
+            capturedMessages = messages;
+            onDelta('参考知识库后生成起保停。');
+            return '参考知识库后生成起保停。';
+        },
+    }, async base => {
+        const response = await fetch(base + '/api/chat', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', authorization: 'Bearer test' },
+            body: JSON.stringify({ message: '电机起保停，停止按钮常闭', series: 's1200', lang: 'lad', includeContext: false }),
+        });
+        assert.equal(response.status, 200);
+        const sse = await response.text();
+        const contextLine = sse.split(/\n/).find(line => line.includes('"type":"context"'));
+        contextEvent = JSON.parse(contextLine.slice('data: '.length));
+    });
+
+    const knowledgeMessage = capturedMessages.find(item => item.role === 'system' && item.content.includes('【知识库】'));
+    assert.ok(knowledgeMessage, '应注入知识库 system 消息');
+    assert.match(knowledgeMessage.content, /参考：《电机起保停（自锁）》/);
+    assert.match(knowledgeMessage.content, /工作流：新建工程/);
+    assert.doesNotMatch(knowledgeMessage.content, /⚠️【待老殷审】/);
+    assert.doesNotMatch(knowledgeMessage.content, /## 常见坑/);
+    assert.equal(capturedMessages.at(-1).role, 'user');
+    assert.ok(contextEvent.knowledgeContext.enabled);
+    assert.ok(contextEvent.knowledgeContext.tokenEstimate > 0);
+});
+
+test('knowledge scenarios and documents are available through authenticated chat routes', async () => {
+    await serveChatRouter({
+        llmStream: async () => '',
+    }, async base => {
+        const scenarios = await getJson(base, '/api/knowledge/scenarios');
+        assert.equal(scenarios.status, 200);
+        assert.equal(scenarios.json.success, true);
+        assert.equal(scenarios.json.scenarios.length, 12);
+        assert.equal(scenarios.json.scenarios[0].source, 'knowledge/index.json');
+
+        const doc = await getJson(base, '/api/knowledge/doc/start-stop');
+        assert.equal(doc.status, 200);
+        assert.equal(doc.json.success, true);
+        assert.equal(doc.json.doc.review.status, 'pending');
+        assert.match(doc.json.doc.warning, /未经领域专家审定/);
+        assert.match(doc.json.doc.content, /⚠️【待老殷审】/);
+    });
+});
+
 test('chat abort propagates to llmStream and persists the interrupted marker', async () => {
     let signalSeen = null;
     let abortObserved;

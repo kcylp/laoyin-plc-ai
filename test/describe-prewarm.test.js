@@ -7,6 +7,8 @@ const { readBackendFile, readBackendSource } = require('./helpers/backend-source
 const serverSrc = readBackendSource();
 const serverEntrySrc = readBackendFile('server.js');
 const tiaMcpRoutesSrc = readBackendFile('routes/tia-mcp.js');
+const tiaRoutesSrc = readBackendFile('routes/tia.js');
+const tiaHistorySrc = readBackendFile('lib/tia-history.js');
 
 function readClientBundle() {
     return [
@@ -157,14 +159,16 @@ test('online panel result is collapsible so other tools stay reachable', () => {
 
 test('write history backend records snapshots and serves them for rollback', () => {
     assert.match(serverSrc, /CREATE TABLE IF NOT EXISTS tia_write_history/);
-    assert.match(serverSrc, /function recordWriteHistory\(userId, info\)/);
-    assert.match(serverSrc, /LIMIT 30/); // 每块保留 30 条
-    assert.ok(serverSrc.includes("router.get('/history', authenticateToken"));
-    assert.ok(serverSrc.includes("router.get('/history/:id', authenticateToken"));
+    assert.match(serverEntrySrc, /const history = require\('\.\/lib\/tia-history'\)/);
+    assert.match(serverEntrySrc, /\.\.\.history/);
+    assert.match(tiaHistorySrc, /function recordWriteHistory\(userId, info, options = \{\}\)/);
+    assert.match(tiaHistorySrc, /maxBlockEntries: 30/);
+    assert.ok(tiaRoutesSrc.includes("router.get('/history', authenticateToken"));
+    assert.ok(tiaRoutesSrc.includes("router.get('/history/:id', authenticateToken"));
     // 写入成功才留快照
-    assert.match(serverSrc, /if \(r\.ok\) \{[\s\S]*?recordWriteHistory/);
+    assert.match(tiaRoutesSrc, /if \(r\.ok\) \{[\s\S]*?recordWriteHistory/);
     // 取版本按用户隔离,防越权读别人历史
-    assert.match(serverSrc, /WHERE id = \? AND user_id = \?/);
+    assert.match(tiaHistorySrc, /WHERE id = \? AND user_id = \?/);
 });
 
 test('history rollback reuses the standard confirm-then-write flow', () => {

@@ -6,6 +6,7 @@ const { logTiaOperation } = require('../lib/logger');
 const { getSharedClient, TiaMcpClient } = require('../tia-mcp-client');
 const { sanitizeDiagnostic } = require('../lib/sanitize');
 const { explainTiaError } = require('../lib/tia-error-hints');
+const { parseTagTableNames } = require('../lib/plc-tag-reader');
 
 module.exports = function createTiaMcpRoutes(deps) {
     const { authenticateToken, localOnly, enqueueTiaOp, queueSnapshot, getUserById, getCurrentModel, listUserModels, llmStream, mcpEnsureAttached, parseBlocksFromTree, getPrewarmStatus } = deps;
@@ -198,12 +199,6 @@ function normalizeHardwareItems(payload) {
     }));
 }
 
-function normalizeTagTables(payload) {
-    const raw = Array.isArray(payload) ? payload
-        : (payload && (payload.Items || payload.items || payload.Tables || payload.tables)) || [];
-    return Array.isArray(raw) ? raw : [];
-}
-
 function findFilesRecursive(dir) {
     const files = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -260,7 +255,7 @@ router.post('/tag-tables', authenticateToken, localOnly, async (req, res) => {
             }
             const result = await client.callTool('GetPlcTagTables', { softwarePath });
             const json = TiaMcpClient.jsonOf(result);
-            return { connected: true, project: attached.project, tables: normalizeTagTables(json), json, text: TiaMcpClient.textOf(result).slice(0, 20000) };
+            return { connected: true, project: attached.project, tables: parseTagTableNames(result), json, text: TiaMcpClient.textOf(result).slice(0, 20000) };
         }, { label: '读取变量表', key: `mcp:tag-tables:${softwarePath}`, timeoutMs: 60000 });
         logTiaOperation({ user, op: 'mcp:GetPlcTagTables', target: softwarePath, ms: Date.now() - startedAt, ok: true, err: null });
         res.json({ success: true, softwarePath, ...out });

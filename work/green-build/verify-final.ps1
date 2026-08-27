@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $gb = $PSScriptRoot
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$zip = Join-Path $gb 'LaoyinPLC-Green-v1.0.2.zip'
+$zip = Join-Path $gb 'LaoyinPLC-Green-20260827.zip'
 $extract = Join-Path $gb 'verify-extract-final'
 $evidence = Join-Path $gb 'verify-final-evidence.txt'
 $lines = New-Object System.Collections.Generic.List[string]
@@ -40,6 +40,11 @@ function Test-AllowedZipPath([string]$name) {
             '老殷工控PLC助手/app/engine/tia-mcp/manifest/',
             '老殷工控PLC助手/app/engine/tia-mcp/runtime/',
             '老殷工控PLC助手/app/engine/tia-mcp/runtime/v',
+            '老殷工控PLC助手/app/knowledge/',
+            '老殷工控PLC助手/app/knowledge/blocks/',
+            '老殷工控PLC助手/app/knowledge/conventions/',
+            '老殷工控PLC助手/app/knowledge/lad-patterns/',
+            '老殷工控PLC助手/app/knowledge/workflows/',
             '老殷工控PLC助手/app/tools/',
             '老殷工控PLC助手/app/web/',
             '老殷工控PLC助手/app/web/css/',
@@ -56,6 +61,8 @@ function Test-AllowedZipPath([string]$name) {
         '老殷工控PLC助手/老殷工控PLC助手.exe',
         '老殷工控PLC助手/老殷工控PLC助手更新器.exe',
         '老殷工控PLC助手/README_请先看.txt',
+        '老殷工控PLC助手/LICENSE.txt',
+        '老殷工控PLC助手/支付宝打赏码.jpg',
         '老殷工控PLC助手/runtime/laoyin-server.exe',
         '老殷工控PLC助手/app/index.html',
         '老殷工控PLC助手/app/login.html',
@@ -76,6 +83,8 @@ function Test-AllowedZipPath([string]$name) {
         '老殷工控PLC助手/app/login.js',
         '老殷工控PLC助手/app/admin.js',
         '老殷工控PLC助手/app/upgrade.js',
+        '老殷工控PLC助手/app/web/knowledge.html',
+        '老殷工控PLC助手/app/knowledge/index.json',
         '老殷工控PLC助手/app/tools/diagnose-tia.ps1',
         '老殷工控PLC助手/app/engine/tia-mcp/manifest/tools-list.json',
         '老殷工控PLC助手/说明文档/绿色版用户手册.md',
@@ -88,6 +97,8 @@ function Test-AllowedZipPath([string]$name) {
     if ($p -match '^老殷工控PLC助手/app/engine/src/(?!test_validate\.ps1$)[^/]+\.(ps1|psm1|xsd)$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/engine/schemas/[^/]+\.xsd$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/engine/tia-mcp/runtime/v[^/]+/.+') { return $true }
+    if ($p -match '^老殷工控PLC助手/app/knowledge/lad-patterns/[^/]+\.(xml|s7dcl|s7res|md)$') { return $true }
+    if ($p -match '^老殷工控PLC助手/app/knowledge/(blocks|conventions|workflows)/[^/]+\.md$') { return $true }
     return $false
 }
 
@@ -153,9 +164,19 @@ $required = @(
     'app\tools\diagnose-tia.ps1',
     'app\engine\tia-mcp\manifest\tools-list.json',
     'app\engine\tia-mcp\runtime\v21\TiaMcpServer.exe',
-    'README_请先看.txt'
+    'app\web\knowledge.html',
+    'app\knowledge\index.json',
+    'README_请先看.txt',
+    'LICENSE.txt',
+    '支付宝打赏码.jpg'
 )
 $missing = @($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
+$knowledgeIndexPath = Join-Path $root 'app\knowledge\index.json'
+$knowledgeEntries = 0
+if (Test-Path -LiteralPath $knowledgeIndexPath) {
+    $knowledgeJson = [IO.File]::ReadAllText($knowledgeIndexPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    $knowledgeEntries = @($knowledgeJson).Count
+}
 $contentFindings = @(Get-PackageContentFindings $root)
 $runtimeNode = Test-Path -LiteralPath (Join-Path $root 'runtime\node.exe')
 $emptyLogs = (Get-ChildItem -LiteralPath (Join-Path $root 'app\work\logs') -Force -File | Measure-Object).Count -eq 0
@@ -165,6 +186,7 @@ Log ('ZIP entries: ' + $zipEntries.Count)
 Log ('ZIP bytes: ' + (Get-Item -LiteralPath $zip).Length)
 Log ('Non-whitelisted entries: ' + $badEntries.Count)
 Log ('Required entries missing: ' + $missing.Count)
+Log ('Knowledge index entries: ' + $knowledgeEntries)
 Log ('Sensitive content findings: ' + $contentFindings.Count)
 Log ('Runtime Node bundled: ' + $runtimeNode + ' (expect False)')
 Log ('Updater executable present: ' + $updaterPresent)
@@ -173,7 +195,7 @@ Log ('Fresh DB backup directory: ' + $emptyBackups)
 if ($badEntries.Count -gt 0) { $badEntries | Select-Object -First 50 | ForEach-Object { Log ('  non-whitelist: ' + $_.FullName) } }
 if ($missing.Count -gt 0) { $missing | ForEach-Object { Log ('  missing: ' + $_) } }
 if ($contentFindings.Count -gt 0) { $contentFindings | Select-Object -First 50 | ForEach-Object { Log ('  sensitive: ' + $_) } }
-if ($badEntries.Count -gt 0 -or $missing.Count -gt 0 -or $contentFindings.Count -gt 0 -or
+if ($badEntries.Count -gt 0 -or $missing.Count -gt 0 -or $knowledgeEntries -ne 32 -or $contentFindings.Count -gt 0 -or
     $runtimeNode -or -not $emptyLogs -or -not $emptyBackups -or -not $updaterPresent) {
     Log 'FAIL: package whitelist/content gate'
     Finish 1
@@ -294,16 +316,16 @@ if ($manifestZip -ne (Split-Path -Leaf $zip) -or [int64]$manifest.sizeBytes -ne 
     Log 'FAIL: update manifest does not match package'
     Finish 1
 }
-if ([string]$manifest.packageUrl -notmatch '^https://github\.com/kcylp/laoyin-plc-ai/releases/download/v\d+\.\d+\.\d+/.+\.zip$') {
+if ([string]$manifest.packageUrl -notmatch '^https://github\.com/kcylp/laoyin-plc-ai/releases/download/20260827/LaoyinPLC-Green-20260827\.zip$') {
     Log 'FAIL: update manifest package URL is not the trusted GitHub Release URL'
     Finish 1
 }
-if ([string]$manifest.version -ne '1.0.2' -or [string]$manifest.minLauncherVersion -ne '1.0.2') {
+if ([string]$manifest.version -ne '1.0.3' -or [string]$manifest.minLauncherVersion -ne '1.0.3') {
     Log 'FAIL: update manifest version contract'
     Finish 1
 }
 Log 'Manifest package URL: trusted GitHub Release HTTPS'
-Log 'Manifest version: 1.0.2'
+Log 'Manifest version: 1.0.3'
 
 Log '--- 6. Runtime data paths ---'
 $loggerSrc = [IO.File]::ReadAllText((Join-Path $repo 'lib\logger.js'), [Text.Encoding]::UTF8)

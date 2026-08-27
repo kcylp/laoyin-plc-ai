@@ -2,6 +2,32 @@ import { identifyCodeType } from './code-blocks.js';
 import { outputPanel } from './output-panel.js';
 
 export const treeMethods = {
+    renderDisconnectedTreeGuide(message = '未连接博途') {
+        const wrap = document.getElementById('realTreeWrap');
+        const pre = document.getElementById('realTree');
+        const blocksEl = document.getElementById('rtBlocks');
+        const descEl = document.getElementById('rtDesc');
+        if (!wrap || !pre) return;
+        wrap.classList.remove('hidden');
+        if (descEl) descEl.classList.add('hidden');
+        pre.textContent = '连接博途后，这里会显示当前工程的软件树、程序块和变量表。';
+        if (!blocksEl) return;
+        blocksEl.innerHTML = `
+            <div class="tia-alert is-info" data-real-tree-empty>
+                <b>${this.escapeHtml(message)}</b><br>
+                连接后这里会显示你的工程结构；未连接时也可以先让 AI 生成可复制的程序。
+                <div style="margin-top:8px">
+                    <button class="tia-btn is-primary is-sm" type="button" data-connect-tia>连接博途</button>
+                    <a class="tia-btn is-ghost is-sm" href="env-check.html">运行环境诊断</a>
+                </div>
+            </div>`;
+        const connect = blocksEl.querySelector('[data-connect-tia]');
+        if (connect) connect.addEventListener('click', () => {
+            const btn = document.getElementById('btnTiaOnline');
+            if (btn) btn.click();
+        });
+    },
+
     async refreshRealTree() {
         const wrap = document.getElementById('realTreeWrap');
         const pre = document.getElementById('realTree');
@@ -60,10 +86,10 @@ export const treeMethods = {
                     blocksEl.innerHTML = '';
                 }
             } else {
-                wrap.classList.add('hidden');
+                this.renderDisconnectedTreeGuide('未连接博途');
             }
-        } catch {
-            wrap.classList.add('hidden');
+        } catch (e) {
+            this.renderDisconnectedTreeGuide('未连接博途');
         }
     },
 

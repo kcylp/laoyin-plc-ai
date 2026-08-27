@@ -2,8 +2,9 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const SYSTEM_PROMPTS = require('../prompts');
-const { resolvePromptContent } = require('../prompt-router');
+const { resolvePromptContent, appendSystemMessage } = require('../prompt-router');
 const { createProjectContextService } = require('../lib/project-context');
+const { createKnowledgeService } = require('../lib/knowledge');
 
 const VALID_LANGS = ['lad', 'fbd', 'scl', 'stl', 'graph'];
 const SERIES_LANGS = {
@@ -12,6 +13,10 @@ const SERIES_LANGS = {
     s1500: ['lad', 'fbd', 'scl', 'stl', 'graph']
 };
 const DEFAULT_LANG = { s200smart: 'stl', s1200: 'scl', s1500: 'scl' };
+const OFF_TOPIC_SOFT_GUIDANCE = [
+    '你是 PLC/工控编程助手。若用户请求与工控、PLC、自动化完全无关（例如写诗、小说、通用闲聊），请礼貌说明你的专长，并简要列出你能帮助完成的 PLC 程序编写、程序解释、故障诊断、博途写入与环境诊断。',
+    '宁可回答不可误拒：工艺描述、动作时序、设备口语化需求、缺少 PLC 关键词的描述（例如“两台泵轮换运行，间隔30秒”）一律视为工控需求正常回答。'
+].join('\n');
 const SCHEMA_COUNT_CACHED = (() => {
     try {
         return fs.readdirSync(path.join(process.env.APP_ROOT || path.join(__dirname, '..'), 'engine', 'schemas'))
@@ -36,6 +41,7 @@ module.exports = function createChatRoutes(deps) {
             }
         }
     });
+    const knowledge = createKnowledgeService();
     const router = express.Router();
 
 router.get('/workbench/status', authenticateToken, (req, res) => {
@@ -104,6 +110,14 @@ router.post('/use-question', authenticateToken, (req, res) => {
 
 // ---------- 路由: AI 对话（后端代理，流式） ----------
 const MAX_HISTORY = 30;
+const DEFAULT_KNOWLEDGE_TOP_N = 3;
+const DEFAULT_KNOWLEDGE_MAX_CHARS = 9000;
+
+function clampInt(value, min, max, fallback) {
+    const num = Number.parseInt(value, 10);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.min(max, Math.max(min, num));
+}
 
 function normalizeHistory(messages) {
     if (!Array.isArray(messages)) return [];
@@ -141,6 +155,30 @@ function clearConversation(userId) {
 
 router.get('/chat/history', authenticateToken, (req, res) => {
     res.json({ success: true, messages: loadConversation(req.user.id) });
+});
+
+// ---------- 路由: 知识库（TASK-012） ----------
+router.get('/knowledge/index', authenticateToken, (req, res) => {
+    res.json({ success: true, entries: knowledge.listKnowledgeDocs() });
+});
+
+router.get('/knowledge/scenarios', authenticateToken, (req, res) => {
+    res.json({ success: true, scenarios: knowledge.getScenarioCards(12) });
+});
+
+router.get('/knowledge/search', authenticateToken, (req, res) => {
+    const q = String(req.query.q || '').trim();
+    const limit = clampInt(req.query.limit, 1, 10, DEFAULT_KNOWLEDGE_TOP_N);
+    res.json({ success: true, q, results: q ? knowledge.searchKnowledge(q, { limit }) : [] });
+});
+
+router.get('/knowledge/doc/:id', authenticateToken, (req, res) => {
+    try {
+        res.json({ success: true, doc: knowledge.readKnowledgeDoc(req.params.id) });
+    } catch (e) {
+        const code = e.code === 'NOT_FOUND' ? 404 : 500;
+        res.status(code).json({ success: false, message: e.message || '读取知识库失败' });
+    }
 });
 
 router.post('/chat', authenticateToken, async (req, res) => {
@@ -194,9 +232,9 @@ router.post('/chat', authenticateToken, async (req, res) => {
     } else if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].content === message) {
         history = history.slice(0, -1);
     }
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
+    const messages = [];
+    appendSystemMessage(messages, systemPrompt);
+    appendSystemMessage(messages, OFF_TOPIC_SOFT_GUIDANCE);
 
     const contextEnabled = includeContext !== false && projectContextEnabled !== false;
     let contextResult = {
@@ -212,11 +250,41 @@ router.post('/chat', authenticateToken, async (req, res) => {
                 includeAllVariables: includeAllVariables === true
             });
             if (contextResult.prompt) {
-                messages.push({ role: 'system', content: contextResult.prompt });
+                appendSystemMessage(messages, contextResult.prompt);
             }
         } catch (e) {
             console.error('项目上下文注入失败:', e.message);
             contextResult.status = { ...contextResult.status, enabled: true, connected: false, error: e.message };
+        }
+    }
+
+    const knowledgeEnabled = req.body.knowledgeEnabled !== false;
+    let knowledgeResult = {
+        prompt: '',
+        status: { enabled: false, workflow: null, matches: [], charCount: 0, tokenEstimate: 0, truncated: false, pendingSectionsFiltered: 0 },
+        docs: []
+    };
+    if (knowledgeEnabled) {
+        try {
+            knowledgeResult = knowledge.buildKnowledgePrompt({
+                message,
+                projectContextStatus: contextResult.status,
+                limit: clampInt(req.body.knowledgeTopN, 1, 3, DEFAULT_KNOWLEDGE_TOP_N),
+                maxPromptChars: clampInt(req.body.knowledgeMaxPromptChars, 2500, DEFAULT_KNOWLEDGE_MAX_CHARS, DEFAULT_KNOWLEDGE_MAX_CHARS)
+            });
+            appendSystemMessage(messages, knowledgeResult.prompt);
+        } catch (e) {
+            console.error('知识库上下文注入失败:', e.message);
+            knowledgeResult.status = {
+                enabled: true,
+                error: e.message,
+                workflow: null,
+                matches: [],
+                charCount: 0,
+                tokenEstimate: 0,
+                truncated: false,
+                pendingSectionsFiltered: 0
+            };
         }
     }
 
@@ -253,7 +321,7 @@ router.post('/chat', authenticateToken, async (req, res) => {
     };
 
     try {
-        sendSSE('context', { projectContext: contextResult.status, details: contextResult.details });
+        sendSSE('context', { projectContext: contextResult.status, knowledgeContext: knowledgeResult.status, details: contextResult.details });
         const full = await llmStream({
             modelId: selectedModel.id,
             userId: req.user.id,

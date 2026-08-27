@@ -4,7 +4,7 @@
 const crypto = require('node:crypto');
 
 const UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/update-manifest.json';
-const PACKAGE_URL = 'https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/work/green-build/LaoyinPLC-Green-v1.0.1.zip';
+const PACKAGE_URL = 'https://github.com/kcylp/laoyin-plc-ai/releases/download/20260827/LaoyinPLC-Green-20260827.zip';
 const MAX_PACKAGE_BYTES = 250 * 1024 * 1024;
 
 function compareVersions(left, right) {

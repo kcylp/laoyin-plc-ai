@@ -50,8 +50,16 @@ npm start
 
 ## 在线更新与公开发布
 
-- 绿色版 v1.0.1 起，托盘菜单提供“检查更新”；清单与 ZIP 只从公开 GitHub Raw HTTPS 读取。
+- 当前公开发布版为 `20260827`，程序更新版本为 `1.0.3`。绿色版托盘菜单提供“检查更新”；清单与 ZIP 只从公开 GitHub HTTPS 读取。
 - 网络异常、清单缺失或 GitHub 返回错误时，程序只显示“当前无法检查更新，请稍后重试”，不会把 404 页面展示给客户，也不会影响当前版本。
 - 发布顺序：先运行 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\work\green-build\build-green.ps1，再计算 ZIP 的 SHA256/字节数并更新根目录 update-manifest.json，最后提交并推送源码、ZIP、清单同一版本。
 - 更新器会再次校验大小和 SHA256，拒绝危险 ZIP 路径，不覆盖 %LOCALAPPDATA%\老殷工控PLC助手 下的授权、数据库、API Key 与个人数据；启动健康检查失败时回滚旧版本。
-- GitHub 仓库地址：https://github.com/kcylp/laoyin-plc-ai。当前公开绿色包下载路径为：https://raw.githubusercontent.com/kcylp/laoyin-plc-ai/main/work/green-build/LaoyinPLC-Green-v1.0.2.zip。不要只更新源码而不更新绿色 ZIP 和 manifest。
+- GitHub 仓库地址：https://github.com/kcylp/laoyin-plc-ai。当前绿色包由 GitHub Release `20260827` 提供；不要只更新源码而不更新绿色 ZIP 和 manifest。
+
+## 专属许可与打赏
+
+- 本项目为老殷工控专属软件，保留所有权利。未经老殷工控事先书面授权，不得商用、收费交付、转售、再许可或重新分发；完整条款见根目录 `LICENSE.txt`。
+- 打赏只代表自愿支持，不授予商业使用权、再分发权或其他许可。
+- 支付宝打赏码：`docs/assets/支付宝打赏码.jpg`
+
+![支付宝打赏码](docs/assets/支付宝打赏码.jpg)

@@ -2,11 +2,16 @@
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $root = Join-Path $repo 'work\green-build'
-$tools = Join-Path $repo 'work\sea-toolchain'
+$tools = if ($env:SEA_TOOLCHAIN_DIR) {
+    [System.IO.Path]::GetFullPath($env:SEA_TOOLCHAIN_DIR)
+} else {
+    Join-Path $repo 'work\sea-toolchain'
+}
 $stageRoot = Join-Path $root 'stage'
 $stage = Join-Path $stageRoot '老殷工控PLC助手'
-$ver = 'v1.0.2'
-$zip = Join-Path $root ("LaoyinPLC-Green-" + $ver + ".zip")
+$ver = '1.0.3'
+$releaseTag = '20260827'
+$zip = Join-Path $root ("LaoyinPLC-Green-" + $releaseTag + ".zip")
 $node = 'D:\DevTools\nodejs\node.exe'
 $signtool = 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe'
 $csc = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
@@ -68,6 +73,11 @@ function Test-AllowedZipPath([string]$name) {
             '老殷工控PLC助手/app/engine/tia-mcp/manifest/',
             '老殷工控PLC助手/app/engine/tia-mcp/runtime/',
             '老殷工控PLC助手/app/engine/tia-mcp/runtime/v',
+            '老殷工控PLC助手/app/knowledge/',
+            '老殷工控PLC助手/app/knowledge/blocks/',
+            '老殷工控PLC助手/app/knowledge/conventions/',
+            '老殷工控PLC助手/app/knowledge/lad-patterns/',
+            '老殷工控PLC助手/app/knowledge/workflows/',
             '老殷工控PLC助手/app/tools/',
             '老殷工控PLC助手/app/web/',
             '老殷工控PLC助手/app/web/css/',
@@ -84,6 +94,8 @@ function Test-AllowedZipPath([string]$name) {
         '老殷工控PLC助手/老殷工控PLC助手.exe',
         '老殷工控PLC助手/老殷工控PLC助手更新器.exe',
         '老殷工控PLC助手/README_请先看.txt',
+        '老殷工控PLC助手/LICENSE.txt',
+        '老殷工控PLC助手/支付宝打赏码.jpg',
         '老殷工控PLC助手/runtime/laoyin-server.exe',
         '老殷工控PLC助手/app/index.html',
         '老殷工控PLC助手/app/login.html',
@@ -104,6 +116,8 @@ function Test-AllowedZipPath([string]$name) {
         '老殷工控PLC助手/app/login.js',
         '老殷工控PLC助手/app/admin.js',
         '老殷工控PLC助手/app/upgrade.js',
+        '老殷工控PLC助手/app/web/knowledge.html',
+        '老殷工控PLC助手/app/knowledge/index.json',
         '老殷工控PLC助手/app/tools/diagnose-tia.ps1',
         '老殷工控PLC助手/app/engine/tia-mcp/manifest/tools-list.json',
         '老殷工控PLC助手/说明文档/绿色版用户手册.md',
@@ -114,6 +128,8 @@ function Test-AllowedZipPath([string]$name) {
     if ($p -match '^老殷工控PLC助手/app/web/[^/]+\.js$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/web/css/[^/]+\.css$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/engine/src/(?!test_validate\.ps1$)[^/]+\.(ps1|psm1|xsd)$') { return $true }
+    if ($p -match '^老殷工控PLC助手/app/knowledge/lad-patterns/[^/]+\.(xml|s7dcl|s7res|md)$') { return $true }
+    if ($p -match '^老殷工控PLC助手/app/knowledge/(blocks|conventions|workflows)/[^/]+\.md$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/engine/schemas/[^/]+\.xsd$') { return $true }
     if ($p -match '^老殷工控PLC助手/app/engine/tia-mcp/runtime/v[^/]+/.+') { return $true }
     return $false
@@ -203,10 +219,16 @@ foreach ($f in $frontendFiles) { Copy-Item -LiteralPath (Join-Path $repo $f) -De
 $adminHtml = [System.IO.File]::ReadAllText((Join-Path $repo 'admin.html'), [System.Text.Encoding]::UTF8)
 $adminHtml = $adminHtml.Replace('在 .env 文件的 ADMIN_KEY 中配置', '由启动器生成并保存在本机安全配置中')
 [System.IO.File]::WriteAllText((Join-Path $appDir 'admin.html'), $adminHtml, [System.Text.UTF8Encoding]::new($false))
-Copy-WhitelistedTree (Join-Path $repo 'web') (Join-Path $appDir 'web') { param($file) $file.Extension -in @('.js','.css') }
+Copy-WhitelistedTree (Join-Path $repo 'web') (Join-Path $appDir 'web') { param($file) $file.Extension -in @('.js','.css') -or $file.Name -eq 'knowledge.html' }
 Copy-WhitelistedTree (Join-Path $repo 'engine\src') (Join-Path $appDir 'engine\src') { param($file) $file.Extension -in @('.ps1','.psm1','.xsd') -and $file.Name -ne 'test_validate.ps1' }
 Copy-WhitelistedTree (Join-Path $repo 'engine\schemas') (Join-Path $appDir 'engine\schemas') { param($file) $file.Extension -eq '.xsd' }
 Copy-WhitelistedTree (Join-Path $repo 'engine\tia-mcp\runtime') (Join-Path $appDir 'engine\tia-mcp\runtime') { param($file) $file.FullName -match '\\runtime\\v[^\\]+\\' }
+[System.IO.Directory]::CreateDirectory((Join-Path $appDir 'knowledge')) | Out-Null
+Copy-Item -LiteralPath (Join-Path $repo 'knowledge\index.json') -Destination (Join-Path $appDir 'knowledge\index.json')
+Copy-WhitelistedTree (Join-Path $repo 'knowledge\blocks') (Join-Path $appDir 'knowledge\blocks') { param($file) $file.Extension -eq '.md' }
+Copy-WhitelistedTree (Join-Path $repo 'knowledge\workflows') (Join-Path $appDir 'knowledge\workflows') { param($file) $file.Extension -eq '.md' }
+Copy-WhitelistedTree (Join-Path $repo 'knowledge\conventions') (Join-Path $appDir 'knowledge\conventions') { param($file) $file.Extension -eq '.md' }
+Copy-WhitelistedTree (Join-Path $repo 'knowledge\lad-patterns') (Join-Path $appDir 'knowledge\lad-patterns') { param($file) $file.Extension -in @('.xml','.s7dcl','.s7res','.md') }
 [System.IO.Directory]::CreateDirectory((Join-Path $appDir 'engine\tia-mcp\manifest')) | Out-Null
 Copy-Item -LiteralPath (Join-Path $repo 'engine\tia-mcp\manifest\tools-list.json') -Destination (Join-Path $appDir 'engine\tia-mcp\manifest\tools-list.json')
 Copy-Item -LiteralPath (Join-Path $repo 'tools\diagnose-tia.ps1') -Destination (Join-Path $appDir 'tools')
@@ -222,8 +244,10 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $updater)) { throw 'upd
 # 4. Customer documentation.
 $enc = [System.Text.UTF8Encoding]::new($false)
 $docsDir = Join-Path $stage '说明文档'
+Copy-Item -LiteralPath (Join-Path $repo 'LICENSE.txt') -Destination (Join-Path $stage 'LICENSE.txt')
+Copy-Item -LiteralPath (Join-Path $repo 'docs\assets\支付宝打赏码.jpg') -Destination (Join-Path $stage '支付宝打赏码.jpg')
 [System.IO.File]::WriteAllText((Join-Path $stage 'README_请先看.txt'), @"
-【老殷工控 PLC 助手 - 绿色免安装版 v1.0.2】
+【老殷工控 PLC 助手 - 绿色免安装版 20260827（程序版本 v1.0.3）】
 
 使用方法
 1. 将 ZIP 完整解压到任意本地文件夹，不要在压缩包内直接运行。
@@ -233,6 +257,8 @@ $docsDir = Join-Path $stage '说明文档'
 5. 退出软件：右击任务栏通知区域里的“老殷工控PLC助手”图标，选择“退出”。
 
 授权与数据
+- 本软件为老殷工控专属，未经事先书面授权不得商用、转售、再许可或重新分发。
+- 完整条款见 LICENSE.txt；支付宝打赏码见“支付宝打赏码.jpg”。打赏不授予商业授权。
 - 首次启动生成 60 天离线试用授权。
 - 授权、数据库保存在：%LOCALAPPDATA%\老殷工控PLC助手
 - 审计日志与数据库备份保存在：%LOCALAPPDATA%\老殷工控PLC助手\logs 和 db-backups
@@ -278,12 +304,12 @@ $zipInfo = Get-Item -LiteralPath $zip
 $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 $manifest = [ordered]@{
     product = '老殷工控PLC助手'
-    version = $ver.TrimStart('v')
-    packageUrl = 'https://github.com/kcylp/laoyin-plc-ai/releases/download/v1.0.2/LaoyinPLC-Green-v1.0.2.zip'
+    version = $ver
+    packageUrl = 'https://github.com/kcylp/laoyin-plc-ai/releases/download/20260827/LaoyinPLC-Green-20260827.zip'
     sha256 = $zipHash
     sizeBytes = [int64]$zipInfo.Length
-    releaseNotes = '增加启动失败安全诊断日志，便于客户环境排查；保留联网检查更新、SHA256 校验、失败回滚与客户数据保护。'
-    minLauncherVersion = $ver.TrimStart('v')
+    releaseNotes = '完成 TIA 真因直达、知识库、新手引导、生成编译自动修复闭环、交付文档导出及真实变量表读取修复；绿色版包含完整运行时、专属许可和支付宝打赏码。'
+    minLauncherVersion = $ver
     publishedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 }
 $manifestPath = Join-Path $repo 'update-manifest.json'

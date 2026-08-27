@@ -1,0 +1,1588 @@
+[
+  {
+    "id": "start-stop",
+    "title": "电机起保停（自锁）",
+    "标题": "电机起保停（自锁）",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "起保停",
+      "自锁",
+      "启停",
+      "保持",
+      "电机启动"
+    ],
+    "关键词": [
+      "起保停",
+      "自锁",
+      "启停",
+      "保持",
+      "电机启动"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Contact+Negated",
+      "O(Card=2)",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "电机起保停：启动按钮按下电机运行并保持，停止按钮按下停止。停止按钮按常闭接线。S7-1200，梯形图。",
+      "仓库排风机：本地/远程两种启停方式，远程优先。急停接在公共停止回路。S7-1500。",
+      "传送带起保停：启动按钮启动，停止按钮停止，故障信号（热保/变频器报警）强制停止。"
+    ],
+    "示例需求": [
+      "电机起保停：启动按钮按下电机运行并保持，停止按钮按下停止。停止按钮按常闭接线。S7-1200，梯形图。",
+      "仓库排风机：本地/远程两种启停方式，远程优先。急停接在公共停止回路。S7-1500。",
+      "传送带起保停：启动按钮启动，停止按钮停止，故障信号（热保/变频器报警）强制停止。"
+    ],
+    "file": "blocks/start-stop.md",
+    "文件": "blocks/start-stop.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "start-stop-sr",
+    "title": "起保停（置位复位版）",
+    "标题": "起保停（置位复位版）",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "置位",
+      "复位",
+      "SR",
+      "自锁",
+      "启停"
+    ],
+    "关键词": [
+      "置位",
+      "复位",
+      "SR",
+      "自锁",
+      "启停"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "SCoil",
+      "RCoil"
+    ],
+    "exampleRequests": [
+      "用 SR 触发器实现电机起保停：启动置位，停止复位。S7-1200。",
+      "用 RS 触发器实现：启动复位（注意 S7-1200 RS 是 Reset 优先）。"
+    ],
+    "示例需求": [
+      "用 SR 触发器实现电机起保停：启动置位，停止复位。S7-1200。",
+      "用 RS 触发器实现：启动复位（注意 S7-1200 RS 是 Reset 优先）。"
+    ],
+    "file": "blocks/start-stop-sr.md",
+    "文件": "blocks/start-stop-sr.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "interlock-fwd-rev",
+    "title": "正反转互锁",
+    "标题": "正反转互锁",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "正反转",
+      "互锁",
+      "换向",
+      "电机"
+    ],
+    "关键词": [
+      "正反转",
+      "互锁",
+      "换向",
+      "电机"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Contact+Negated",
+      "O",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "三相电机正反转：正转按钮启动正转，反转按钮启动反转，停止按钮停止。软件互锁防止同时吸合。S7-1200。",
+      "正反转带原点回归：先回到原点才能切换方向。"
+    ],
+    "示例需求": [
+      "三相电机正反转：正转按钮启动正转，反转按钮启动反转，停止按钮停止。软件互锁防止同时吸合。S7-1200。",
+      "正反转带原点回归：先回到原点才能切换方向。"
+    ],
+    "file": "blocks/interlock-fwd-rev.md",
+    "文件": "blocks/interlock-fwd-rev.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "jog-vs-run",
+    "title": "点动与长动切换",
+    "标题": "点动与长动切换",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "点动",
+      "长动",
+      "寸动",
+      "切换"
+    ],
+    "关键词": [
+      "点动",
+      "长动",
+      "寸动",
+      "切换"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "PBox",
+      "O",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "电机点动/长动切换：选择开关切到点动时按启动按钮点动，切到长动时起保停运行。S7-1200。",
+      "变频器 jog 模式：通过数字量输出发 jog 命令，配合参数设置实现点动。"
+    ],
+    "示例需求": [
+      "电机点动/长动切换：选择开关切到点动时按启动按钮点动，切到长动时起保停运行。S7-1200。",
+      "变频器 jog 模式：通过数字量输出发 jog 命令，配合参数设置实现点动。"
+    ],
+    "file": "blocks/jog-vs-run.md",
+    "文件": "blocks/jog-vs-run.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mode-select",
+    "title": "手动/自动方式切换",
+    "标题": "手动/自动方式切换",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "方式",
+      "手自动",
+      "切换",
+      "模式"
+    ],
+    "关键词": [
+      "方式",
+      "手自动",
+      "切换",
+      "模式"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Contact+Negated",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "设备手动/自动切换：手动方式下各动作由按钮触发，自动方式下按启动按钮进入自动循环。S7-1200。",
+      "多设备共享 HMI：方式位由 HMI 写入，程序只读方式位分派逻辑。"
+    ],
+    "示例需求": [
+      "设备手动/自动切换：手动方式下各动作由按钮触发，自动方式下按启动按钮进入自动循环。S7-1200。",
+      "多设备共享 HMI：方式位由 HMI 写入，程序只读方式位分派逻辑。"
+    ],
+    "file": "blocks/mode-select.md",
+    "文件": "blocks/mode-select.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "edge-detect",
+    "title": "上升沿触发一次",
+    "标题": "上升沿触发一次",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "上升沿",
+      "单次",
+      "触发",
+      "边沿"
+    ],
+    "关键词": [
+      "上升沿",
+      "单次",
+      "触发",
+      "边沿"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "PBox"
+    ],
+    "exampleRequests": [
+      "上升沿触发计数：每按一次启动按钮，产量计数器加 1。S7-1200。",
+      "下降沿触发：使用 NBox 检测按钮释放瞬间（注意 NBox 未在全部版本验证）。"
+    ],
+    "示例需求": [
+      "上升沿触发计数：每按一次启动按钮，产量计数器加 1。S7-1200。",
+      "下降沿触发：使用 NBox 检测按钮释放瞬间（注意 NBox 未在全部版本验证）。"
+    ],
+    "file": "blocks/edge-detect.md",
+    "文件": "blocks/edge-detect.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "flasher",
+    "title": "闪烁/报警灯",
+    "标题": "闪烁/报警灯",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "闪烁",
+      "闪灯",
+      "报警灯",
+      "警示"
+    ],
+    "关键词": [
+      "闪烁",
+      "闪灯",
+      "报警灯",
+      "警示"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "TON",
+      "Contact+Negated",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "报警灯闪烁：有报警时灯以 1Hz 闪烁，无报警时常亮。S7-1200。",
+      " Beacon 灯三态：无报警灭、故障快闪(2Hz)、断电常亮。"
+    ],
+    "示例需求": [
+      "报警灯闪烁：有报警时灯以 1Hz 闪烁，无报警时常亮。S7-1200。",
+      " Beacon 灯三态：无报警灭、故障快闪(2Hz)、断电常亮。"
+    ],
+    "file": "blocks/flasher.md",
+    "文件": "blocks/flasher.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "delay-on-off",
+    "title": "通电延时 / 断电延时",
+    "标题": "通电延时 / 断电延时",
+    "category": "基础逻辑",
+    "分类": "基础逻辑",
+    "keywords": [
+      "延时",
+      "延迟",
+      "TON",
+      "TOF"
+    ],
+    "关键词": [
+      "延时",
+      "延迟",
+      "TON",
+      "TOF"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "partial",
+    "可生成性": "partial",
+    "generationMark": "⚠️",
+    "所需指令": [
+      "TON"
+    ],
+    "exampleRequests": [
+      "电机启动延时 5 秒再合主接触器：启动信号后先预吹风，再延时合闸。S7-1200。",
+      "断电延时保持运行：停止信号消失后继续运行 3 秒再停（用 TON 变通实现 TOF）。"
+    ],
+    "示例需求": [
+      "电机启动延时 5 秒再合主接触器：启动信号后先预吹风，再延时合闸。S7-1200。",
+      "断电延时保持运行：停止信号消失后继续运行 3 秒再停（用 TON 变通实现 TOF）。"
+    ],
+    "file": "blocks/delay-on-off.md",
+    "文件": "blocks/delay-on-off.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "star-delta",
+    "title": "星三角启动",
+    "标题": "星三角启动",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "星三角",
+      "降压启动",
+      "Y/△",
+      "星角"
+    ],
+    "关键词": [
+      "星三角",
+      "降压启动",
+      "Y/△",
+      "星角"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Coil",
+      "RCoil",
+      "TON"
+    ],
+    "exampleRequests": [
+      "11kW 电机星三角启动：星接触器吸合 5 秒后切换到角接触器，互锁防止同时吸合。S7-1200。",
+      "带停止优先的星三角：停止时先断开星接触器，延时后再断角接触器。"
+    ],
+    "示例需求": [
+      "11kW 电机星三角启动：星接触器吸合 5 秒后切换到角接触器，互锁防止同时吸合。S7-1200。",
+      "带停止优先的星三角：停止时先断开星接触器，延时后再断角接触器。"
+    ],
+    "file": "blocks/star-delta.md",
+    "文件": "blocks/star-delta.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "cylinder-reciprocate",
+    "title": "气缸往复",
+    "标题": "气缸往复",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "气缸",
+      "电磁阀",
+      "伸出",
+      "缩回",
+      "到位"
+    ],
+    "关键词": [
+      "气缸",
+      "电磁阀",
+      "伸出",
+      "缩回",
+      "到位"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Coil",
+      "TON"
+    ],
+    "exampleRequests": [
+      "双作用气缸往复：伸出到位信号触发缩回，缩回到位信号触发伸出。S7-1200。",
+      "带超时的气缸往复：单次动作超时报警，防止磁性开关故障时电磁阀常吸。"
+    ],
+    "示例需求": [
+      "双作用气缸往复：伸出到位信号触发缩回，缩回到位信号触发伸出。S7-1200。",
+      "带超时的气缸往复：单次动作超时报警，防止磁性开关故障时电磁阀常吸。"
+    ],
+    "file": "blocks/cylinder-reciprocate.md",
+    "文件": "blocks/cylinder-reciprocate.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "multi-pump-rotate",
+    "title": "多台设备轮换",
+    "标题": "多台设备轮换",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "轮换",
+      "交替",
+      "备用",
+      "主备"
+    ],
+    "关键词": [
+      "轮换",
+      "交替",
+      "备用",
+      "主备"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "CTU",
+      "Contact",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "3 台水泵轮换：累计运行时间最少的自动启动，手动轮换时也可指定。S7-1200。",
+      "主泵故障自动切备用泵：运行泵故障信号触发备泵启动，故障泵锁定 5 分钟。"
+    ],
+    "示例需求": [
+      "3 台水泵轮换：累计运行时间最少的自动启动，手动轮换时也可指定。S7-1200。",
+      "主泵故障自动切备用泵：运行泵故障信号触发备泵启动，故障泵锁定 5 分钟。"
+    ],
+    "file": "blocks/multi-pump-rotate.md",
+    "文件": "blocks/multi-pump-rotate.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "conveyor-interlock",
+    "title": "输送线联锁启停",
+    "标题": "输送线联锁启停",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "输送",
+      "联锁",
+      "顺启",
+      "逆停"
+    ],
+    "关键词": [
+      "输送",
+      "联锁",
+      "顺启",
+      "逆停"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Contact+Negated",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "三级输送线顺启逆停：1#启动→2#才能启动→3#才能启动；停止时 3#先停→2#再停→1#最后停。S7-1200。",
+      "带料流检测的联锁：下游堵料时上游自动降速，上游堵料时下游停机。"
+    ],
+    "示例需求": [
+      "三级输送线顺启逆停：1#启动→2#才能启动→3#才能启动；停止时 3#先停→2#再停→1#最后停。S7-1200。",
+      "带料流检测的联锁：下游堵料时上游自动降速，上游堵料时下游停机。"
+    ],
+    "file": "blocks/conveyor-interlock.md",
+    "文件": "blocks/conveyor-interlock.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "level-control",
+    "title": "液位/料位控制",
+    "标题": "液位/料位控制",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "液位",
+      "料位",
+      "高低位",
+      "补水"
+    ],
+    "关键词": [
+      "液位",
+      "料位",
+      "高低位",
+      "补水"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Coil",
+      "Compare"
+    ],
+    "exampleRequests": [
+      "水箱高低位控制：低水位启动水泵，高水位停泵，中间不动作。S7-1200。",
+      "料仓料位控制：低料位启动上料，高料位停止，带超时保护（上料时间过长报警）。"
+    ],
+    "示例需求": [
+      "水箱高低位控制：低水位启动水泵，高水位停泵，中间不动作。S7-1200。",
+      "料仓料位控制：低料位启动上料，高料位停止，带超时保护（上料时间过长报警）。"
+    ],
+    "file": "blocks/level-control.md",
+    "文件": "blocks/level-control.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "analog-scale",
+    "title": "模拟量标定",
+    "标题": "模拟量标定",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "模拟量",
+      "标定",
+      "量程",
+      "4-20mA",
+      "转换"
+    ],
+    "关键词": [
+      "模拟量",
+      "标定",
+      "量程",
+      "4-20mA",
+      "转换"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Convert",
+      "Sub",
+      "Mul",
+      "Div"
+    ],
+    "exampleRequests": [
+      "4-20mA 温度变送器标定：0-200°C 对应 4-20mA，用 NORM_X/SCALE_X 或公式转换。S7-1200。",
+      "压力传感器标定：0-1.0MPa 对应 4-20mA，需考虑工程单位和线性化。"
+    ],
+    "示例需求": [
+      "4-20mA 温度变送器标定：0-200°C 对应 4-20mA，用 NORM_X/SCALE_X 或公式转换。S7-1200。",
+      "压力传感器标定：0-1.0MPa 对应 4-20mA，需考虑工程单位和线性化。"
+    ],
+    "file": "blocks/analog-scale.md",
+    "文件": "blocks/analog-scale.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "pid-temp",
+    "title": "PID 温控",
+    "标题": "PID 温控",
+    "category": "常用设备",
+    "分类": "常用设备",
+    "keywords": [
+      "PID",
+      "温控",
+      "恒温",
+      "调节"
+    ],
+    "关键词": [
+      "PID",
+      "温控",
+      "恒温",
+      "调节"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "PID_Compact"
+    ],
+    "exampleRequests": [
+      "PID_Compact 温控：加热器 PID 调节，设定值 180°C，温度传感器 PT100 输入。S7-1500。",
+      "带限幅的 PID：输出限幅在 0-100%，手动/自动切换，PID 参数在线可调。"
+    ],
+    "示例需求": [
+      "PID_Compact 温控：加热器 PID 调节，设定值 180°C，温度传感器 PT100 输入。S7-1500。",
+      "带限幅的 PID：输出限幅在 0-100%，手动/自动切换，PID 参数在线可调。"
+    ],
+    "file": "blocks/pid-temp.md",
+    "文件": "blocks/pid-temp.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "step-sequencer",
+    "title": "步序状态机",
+    "标题": "步序状态机",
+    "category": "流程控制",
+    "分类": "流程控制",
+    "keywords": [
+      "步序",
+      "状态机",
+      "流程",
+      "节拍",
+      "工步"
+    ],
+    "关键词": [
+      "步序",
+      "状态机",
+      "流程",
+      "节拍",
+      "工步"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Eq",
+      "Move",
+      "Contact"
+    ],
+    "exampleRequests": [
+      "6 工位步序：待机→上料→加工→检测→下料→复位，每步超时 30 秒报警。S7-1200。",
+      "SCL 状态机：CASE #Step OF ... 分支，每步进入条件+执行内容+退出条件。S7-1500 更推荐 SCL。"
+    ],
+    "示例需求": [
+      "6 工位步序：待机→上料→加工→检测→下料→复位，每步超时 30 秒报警。S7-1200。",
+      "SCL 状态机：CASE #Step OF ... 分支，每步进入条件+执行内容+退出条件。S7-1500 更推荐 SCL。"
+    ],
+    "file": "blocks/step-sequencer.md",
+    "文件": "blocks/step-sequencer.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "step-timeout",
+    "title": "步超时监控",
+    "标题": "步超时监控",
+    "category": "流程控制",
+    "分类": "流程控制",
+    "keywords": [
+      "超时",
+      "卡步",
+      "看步",
+      "监控"
+    ],
+    "关键词": [
+      "超时",
+      "卡步",
+      "看步",
+      "监控"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "TON",
+      "Contact",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "步超时监控：每步启动 TON，超时未走下一步则触发报警并停机。S7-1200。",
+      "分步超时：不同步有不同超时值（如等待进料 60 秒、加工 120 秒）。"
+    ],
+    "示例需求": [
+      "步超时监控：每步启动 TON，超时未走下一步则触发报警并停机。S7-1200。",
+      "分步超时：不同步有不同超时值（如等待进料 60 秒、加工 120 秒）。"
+    ],
+    "file": "blocks/step-timeout.md",
+    "文件": "blocks/step-timeout.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "recipe",
+    "title": "配方管理",
+    "标题": "配方管理",
+    "category": "流程控制",
+    "分类": "流程控制",
+    "keywords": [
+      "配方",
+      "参数组",
+      "品种切换"
+    ],
+    "关键词": [
+      "配方",
+      "参数组",
+      "品种切换"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "partial",
+    "可生成性": "partial",
+    "generationMark": "⚠️",
+    "所需指令": [
+      "MOVE_BLK",
+      "Contact",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "3 种产品配方切换：配方号 1/2/3 对应不同的温度、时间、速度参数组。S7-1200。",
+      "配方上传下载：通过 HMI 选择配方号，参数从 DB 加载到工作区。"
+    ],
+    "示例需求": [
+      "3 种产品配方切换：配方号 1/2/3 对应不同的温度、时间、速度参数组。S7-1200。",
+      "配方上传下载：通过 HMI 选择配方号，参数从 DB 加载到工作区。"
+    ],
+    "file": "blocks/recipe.md",
+    "文件": "blocks/recipe.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "batch-count",
+    "title": "产量计数",
+    "标题": "产量计数",
+    "category": "流程控制",
+    "分类": "流程控制",
+    "keywords": [
+      "计数",
+      "产量",
+      "批次"
+    ],
+    "关键词": [
+      "计数",
+      "产量",
+      "批次"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "CTU",
+      "Contact"
+    ],
+    "exampleRequests": [
+      "班产量计数：每来一个工件脉冲 CTU 计数，班次切换时 CTD 清零。S7-1200。",
+      "批次计数：设定目标数量，CTU 到 PV 触发报警并停止线体。"
+    ],
+    "示例需求": [
+      "班产量计数：每来一个工件脉冲 CTU 计数，班次切换时 CTD 清零。S7-1200。",
+      "批次计数：设定目标数量，CTU 到 PV 触发报警并停止线体。"
+    ],
+    "file": "blocks/batch-count.md",
+    "文件": "blocks/batch-count.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "alarm-latch",
+    "title": "报警锁存与汇总",
+    "标题": "报警锁存与汇总",
+    "category": "报警与安全",
+    "分类": "报警与安全",
+    "keywords": [
+      "报警",
+      "锁存",
+      "汇总",
+      "复位"
+    ],
+    "关键词": [
+      "报警",
+      "锁存",
+      "汇总",
+      "复位"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "入门",
+    "难度": "入门",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "SCoil",
+      "RCoil",
+      "O",
+      "Contact"
+    ],
+    "exampleRequests": [
+      "报警锁存：故障触发 SCoil 锁存，复位按钮 RCoil 清除（需故障消失才能复位）。S7-1200。",
+      "报警汇总：所有故障 OR 成「有报警」位，驱动报警灯和停机联锁。"
+    ],
+    "示例需求": [
+      "报警锁存：故障触发 SCoil 锁存，复位按钮 RCoil 清除（需故障消失才能复位）。S7-1200。",
+      "报警汇总：所有故障 OR 成「有报警」位，驱动报警灯和停机联锁。"
+    ],
+    "file": "blocks/alarm-latch.md",
+    "文件": "blocks/alarm-latch.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "safety-interlock",
+    "title": "安全联锁（标准侧）",
+    "标题": "安全联锁（标准侧）",
+    "category": "报警与安全",
+    "分类": "报警与安全",
+    "keywords": [
+      "急停",
+      "联锁",
+      "安全链"
+    ],
+    "关键词": [
+      "急停",
+      "联锁",
+      "安全链"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "Contact",
+      "Contact+Negated",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "急停联锁逻辑：急停辅助触点串联在停止回路，急停按下时停机并报警锁存。S7-1200。（注意：急停移除危险能量靠安全继电器硬线，程序只读辅助触点做联锁）",
+      "安全门联锁：门禁信号串联在安全回路，门开时设备停机。"
+    ],
+    "示例需求": [
+      "急停联锁逻辑：急停辅助触点串联在停止回路，急停按下时停机并报警锁存。S7-1200。（注意：急停移除危险能量靠安全继电器硬线，程序只读辅助触点做联锁）",
+      "安全门联锁：门禁信号串联在安全回路，门开时设备停机。"
+    ],
+    "file": "blocks/safety-interlock.md",
+    "文件": "blocks/safety-interlock.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "first-fault",
+    "title": "首出故障记忆",
+    "标题": "首出故障记忆",
+    "category": "报警与安全",
+    "分类": "报警与安全",
+    "keywords": [
+      "首出",
+      "第一故障",
+      "记忆"
+    ],
+    "关键词": [
+      "首出",
+      "第一故障",
+      "记忆"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "进阶",
+    "难度": "进阶",
+    "generationStatus": "full",
+    "可生成性": "full",
+    "generationMark": "✅",
+    "所需指令": [
+      "SCoil",
+      "Contact",
+      "Coil"
+    ],
+    "exampleRequests": [
+      "首出故障记忆：多个故障中只保留最先触发的那一个，便于排查。S7-1200。",
+      "带时间戳的首出：配合 TON 记录故障发生时间，显示在 HMI。"
+    ],
+    "示例需求": [
+      "首出故障记忆：多个故障中只保留最先触发的那一个，便于排查。S7-1200。",
+      "带时间戳的首出：配合 TON 记录故障发生时间，显示在 HMI。"
+    ],
+    "file": "blocks/first-fault.md",
+    "文件": "blocks/first-fault.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-axis-enable",
+    "title": "轴使能 + 稳定延时",
+    "标题": "轴使能 + 稳定延时",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_Power",
+      "轴使能",
+      "使能",
+      "延时"
+    ],
+    "关键词": [
+      "MC_Power",
+      "轴使能",
+      "使能",
+      "延时"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_Power",
+      "TON"
+    ],
+    "exampleRequests": [
+      "MC_Power 轴使能：使能信号到位后延时 500ms 再给 Enable，等待驱动器就绪。S7-1500。",
+      "使能条件检查：必须在急停释放、驱动器无故障、位置在软限位内才能使能。"
+    ],
+    "示例需求": [
+      "MC_Power 轴使能：使能信号到位后延时 500ms 再给 Enable，等待驱动器就绪。S7-1500。",
+      "使能条件检查：必须在急停释放、驱动器无故障、位置在软限位内才能使能。"
+    ],
+    "file": "blocks/mc-axis-enable.md",
+    "文件": "blocks/mc-axis-enable.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-home",
+    "title": "回原点/位置清零",
+    "标题": "回原点/位置清零",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_Home",
+      "回零",
+      "原点",
+      "位置"
+    ],
+    "关键词": [
+      "MC_Home",
+      "回零",
+      "原点",
+      "位置"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_Home"
+    ],
+    "exampleRequests": [
+      "MC_Home 回原点：使用原点开关 + 零脉冲回零，Mode 参数需在博途指令帮助中核对。S7-1500。",
+      "主动回零 vs 被动回零：根据机械结构和传感器配置选择回零模式。"
+    ],
+    "示例需求": [
+      "MC_Home 回原点：使用原点开关 + 零脉冲回零，Mode 参数需在博途指令帮助中核对。S7-1500。",
+      "主动回零 vs 被动回零：根据机械结构和传感器配置选择回零模式。"
+    ],
+    "file": "blocks/mc-home.md",
+    "文件": "blocks/mc-home.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-jog",
+    "title": "手动点动",
+    "标题": "手动点动",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_MoveJog",
+      "点动",
+      "手动",
+      "寸动"
+    ],
+    "关键词": [
+      "MC_MoveJog",
+      "点动",
+      "手动",
+      "寸动"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_MoveJog"
+    ],
+    "exampleRequests": [
+      "MC_MoveJog 点动：HMI 点动按钮按下时轴以设定速度移动，释放停止。S7-1500。",
+      "点动速度分级：慢速点动 10mm/s 用于精细定位，快速点动 100mm/s 用于快速移动。"
+    ],
+    "示例需求": [
+      "MC_MoveJog 点动：HMI 点动按钮按下时轴以设定速度移动，释放停止。S7-1500。",
+      "点动速度分级：慢速点动 10mm/s 用于精细定位，快速点动 100mm/s 用于快速移动。"
+    ],
+    "file": "blocks/mc-jog.md",
+    "文件": "blocks/mc-jog.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-index",
+    "title": "分度定位（相对）",
+    "标题": "分度定位（相对）",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_MoveRelative",
+      "相对定位",
+      "分度"
+    ],
+    "关键词": [
+      "MC_MoveRelative",
+      "相对定位",
+      "分度"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_MoveRelative"
+    ],
+    "exampleRequests": [
+      "分度盘相对定位：每次转 30°，分 12 次完成一圈。S7-1500。",
+      "相对定位带缓冲：上一条运动未完成时新指令进入缓冲队列。"
+    ],
+    "示例需求": [
+      "分度盘相对定位：每次转 30°，分 12 次完成一圈。S7-1500。",
+      "相对定位带缓冲：上一条运动未完成时新指令进入缓冲队列。"
+    ],
+    "file": "blocks/mc-index.md",
+    "文件": "blocks/mc-index.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-absolute",
+    "title": "绝对定位",
+    "标题": "绝对定位",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_MoveAbsolute",
+      "绝对定位",
+      "位置"
+    ],
+    "关键词": [
+      "MC_MoveAbsolute",
+      "绝对定位",
+      "位置"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_MoveAbsolute"
+    ],
+    "exampleRequests": [
+      "绝对定位到 500mm 位置：直接指定目标位置，轴自行计算最短路径。S7-1500。",
+      "多位置表：HMI 选择目标位置号，程序查表获取绝对坐标并执行。"
+    ],
+    "示例需求": [
+      "绝对定位到 500mm 位置：直接指定目标位置，轴自行计算最短路径。S7-1500。",
+      "多位置表：HMI 选择目标位置号，程序查表获取绝对坐标并执行。"
+    ],
+    "file": "blocks/mc-absolute.md",
+    "文件": "blocks/mc-absolute.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-halt",
+    "title": "停车",
+    "标题": "停车",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_Halt",
+      "停车",
+      "停止"
+    ],
+    "关键词": [
+      "MC_Halt",
+      "停车",
+      "停止"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_Halt"
+    ],
+    "exampleRequests": [
+      "MC_Halt 紧急停车：收到急停信号时 MC_Halt 使轴减速停止，不保持位置。S7-1500。",
+      "Halt 与 Stop 的区别：Halt 是减速停止不锁轴，Stop 是减速停止并锁轴保持位置。"
+    ],
+    "示例需求": [
+      "MC_Halt 紧急停车：收到急停信号时 MC_Halt 使轴减速停止，不保持位置。S7-1500。",
+      "Halt 与 Stop 的区别：Halt 是减速停止不锁轴，Stop 是减速停止并锁轴保持位置。"
+    ],
+    "file": "blocks/mc-halt.md",
+    "文件": "blocks/mc-halt.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "mc-reset",
+    "title": "轴错误复位",
+    "标题": "轴错误复位",
+    "category": "运动控制",
+    "分类": "运动控制",
+    "keywords": [
+      "MC_Reset",
+      "复位",
+      "错误",
+      "报警"
+    ],
+    "关键词": [
+      "MC_Reset",
+      "复位",
+      "错误",
+      "报警"
+    ],
+    "appliesTo": [
+      "S7-1500"
+    ],
+    "适用": [
+      "S7-1500"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MC_Reset"
+    ],
+    "exampleRequests": [
+      "MC_Reset 复位：驱动器故障后执行 Reset 清除错误，重新使能。S7-1500。",
+      "带确认的复位：HMI 确认已排除故障后才执行 MC_Reset，避免盲复。"
+    ],
+    "示例需求": [
+      "MC_Reset 复位：驱动器故障后执行 Reset 清除错误，重新使能。S7-1500。",
+      "带确认的复位：HMI 确认已排除故障后才执行 MC_Reset，避免盲复。"
+    ],
+    "file": "blocks/mc-reset.md",
+    "文件": "blocks/mc-reset.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "comm-s7",
+    "title": "S7 通信（PUT/GET）",
+    "标题": "S7 通信（PUT/GET）",
+    "category": "通信",
+    "分类": "通信",
+    "keywords": [
+      "S7",
+      "PUT",
+      "GET",
+      "通信"
+    ],
+    "关键词": [
+      "S7",
+      "PUT",
+      "GET",
+      "通信"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "PUT",
+      "GET"
+    ],
+    "exampleRequests": [
+      "S7 PUT/GET 通信：CPU1515 作为客户端，PUT 数据到 CPU1214 的 DB。S7-1500。",
+      "注意：SetPutGetAccess 是危险工具，需 TASK-006 白名单授权后才能自动生成通信块。"
+    ],
+    "示例需求": [
+      "S7 PUT/GET 通信：CPU1515 作为客户端，PUT 数据到 CPU1214 的 DB。S7-1500。",
+      "注意：SetPutGetAccess 是危险工具，需 TASK-006 白名单授权后才能自动生成通信块。"
+    ],
+    "file": "blocks/comm-s7.md",
+    "文件": "blocks/comm-s7.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "comm-modbus",
+    "title": "Modbus TCP/RTU",
+    "标题": "Modbus TCP/RTU",
+    "category": "通信",
+    "分类": "通信",
+    "keywords": [
+      "Modbus",
+      "TCP",
+      "RTU",
+      "通信"
+    ],
+    "关键词": [
+      "Modbus",
+      "TCP",
+      "RTU",
+      "通信"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "none",
+    "可生成性": "none",
+    "generationMark": "none",
+    "所需指令": [
+      "MB_CLIENT",
+      "MB_SERVER"
+    ],
+    "exampleRequests": [
+      "Modbus TCP 读写变频器：MB_CLIENT 读保持寄存器 40100 获得转速反馈。S7-1200。",
+      "Modbus RTU 串行通信：CM1241 模块，读温度变送器 04 功能码。"
+    ],
+    "示例需求": [
+      "Modbus TCP 读写变频器：MB_CLIENT 读保持寄存器 40100 获得转速反馈。S7-1200。",
+      "Modbus RTU 串行通信：CM1241 模块，读温度变送器 04 功能码。"
+    ],
+    "file": "blocks/comm-modbus.md",
+    "文件": "blocks/comm-modbus.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  },
+  {
+    "id": "comm-profinet",
+    "title": "Profinet IO 读写",
+    "标题": "Profinet IO 读写",
+    "category": "通信",
+    "分类": "通信",
+    "keywords": [
+      "Profinet",
+      "IO",
+      "读写",
+      "设备"
+    ],
+    "关键词": [
+      "Profinet",
+      "IO",
+      "读写",
+      "设备"
+    ],
+    "appliesTo": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "适用": [
+      "S7-1200",
+      "S7-1500",
+      "S7-200SMART"
+    ],
+    "difficulty": "高级",
+    "难度": "高级",
+    "generationStatus": "partial",
+    "可生成性": "partial",
+    "generationMark": "⚠️",
+    "所需指令": [
+      "Contact",
+      "Coil",
+      "Move"
+    ],
+    "exampleRequests": [
+      "Profinet IO 状态监控：读取 IO 设备输入映像区，判断传感器状态。S7-1500。",
+      "Profinet 设备替换：更换 IO 设备时保持 PROFINET 设备名，无需重新组态下载。"
+    ],
+    "示例需求": [
+      "Profinet IO 状态监控：读取 IO 设备输入映像区，判断传感器状态。S7-1500。",
+      "Profinet 设备替换：更换 IO 设备时保持 PROFINET 设备名，无需重新组态下载。"
+    ],
+    "file": "blocks/comm-profinet.md",
+    "文件": "blocks/comm-profinet.md",
+    "review_status": "pending",
+    "source": "knowledge/index.json"
+  }
+]

@@ -133,6 +133,8 @@
             background: #fff;
             color: #1f2d2c;
         }
+        .report-logo-row { display:flex; align-items:center; gap:12px; min-height:48px; }
+        .report-logo-preview { width:120px; height:48px; object-fit:contain; border:1px solid #cfd8d7; background:#fff; }
         .form-row input:focus, .form-row select:focus {
             border-color: var(--tia-accent);
             outline: 3px solid rgba(31, 111, 235, 0.14);
@@ -268,6 +270,34 @@
                     <div class="msg" id="msg"></div>
 
                     <section class="section-card">
+                        <h2>交付文档公司信息</h2>
+                        <div class="provider-form">
+                            <div class="form-row">
+                                <label for="reportCompanyName">公司名称</label>
+                                <input type="text" id="reportCompanyName" autocomplete="organization">
+                            </div>
+                            <div class="form-row">
+                                <label for="reportProjectPrefix">项目编号前缀</label>
+                                <input type="text" id="reportProjectPrefix" placeholder="例如 PLC-">
+                            </div>
+                            <div class="form-row span-2">
+                                <label for="reportContact">联系方式</label>
+                                <input type="text" id="reportContact" placeholder="电话、邮箱或地址">
+                            </div>
+                            <div class="form-row span-2">
+                                <label for="reportLogoFile">公司 Logo</label>
+                                <div class="report-logo-row">
+                                    <input type="file" id="reportLogoFile" accept="image/png,image/jpeg">
+                                    <img class="report-logo-preview" id="reportLogoPreview" alt="公司 Logo 预览" hidden>
+                                </div>
+                            </div>
+                            <div class="btn-row span-2">
+                                <button class="primary" id="saveReportSettings" type="button">保存交付文档信息</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section-card">
                         <h2>博途连接</h2>
                         <div class="provider-form">
                             <div class="form-row span-2">
@@ -330,6 +360,11 @@
                         <p><code>https://api.openai.com/v1</code></p>
                         <p><code>https://你的中转站/v1</code></p>
                     </div>
+                    <div class="side-card">
+                        <h3>新手向导</h3>
+                        <p>需要重新走环境检查、AI 配置和连接博途三步时，可从主界面再次显示向导。</p>
+                        <button class="btn-ghost" id="rerunOnboardingBtn" type="button">重新运行向导</button>
+                    </div>
                 </aside>
             </div>
             <div class="settings-footer">老殷工控PLC · 未经授权 禁止商用</div>
@@ -366,6 +401,52 @@
         j.status = r.status;
         return j;
     }
+
+    let reportLogoData = '';
+
+    function showReportLogo(dataUrl) {
+        const preview = $('reportLogoPreview');
+        reportLogoData = /^data:image\/(?:png|jpeg);base64,/i.test(dataUrl || '') ? dataUrl : '';
+        preview.src = reportLogoData;
+        preview.hidden = !reportLogoData;
+    }
+
+    async function loadReportSettings() {
+        const j = await api('/api/report/settings');
+        if (!j.success) return;
+        const settings = j.settings || {};
+        $('reportCompanyName').value = settings.companyName || '';
+        $('reportContact').value = settings.contact || '';
+        $('reportProjectPrefix').value = settings.projectPrefix || '';
+        showReportLogo(settings.logoData || '');
+    }
+
+    $('reportLogoFile').addEventListener('change', () => {
+        const file = $('reportLogoFile').files && $('reportLogoFile').files[0];
+        if (!file) return;
+        if (!/^image\/(?:png|jpeg)$/.test(file.type) || file.size > 1024 * 1024) {
+            $('reportLogoFile').value = '';
+            showMsg('Logo 仅支持 1 MB 以内的 PNG/JPEG。', 'err');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => showReportLogo(String(reader.result || ''));
+        reader.onerror = () => showMsg('Logo 读取失败。', 'err');
+        reader.readAsDataURL(file);
+    });
+
+    $('saveReportSettings').addEventListener('click', async () => {
+        const j = await api('/api/report/settings', {
+            method: 'POST',
+            body: JSON.stringify({
+                companyName: $('reportCompanyName').value.trim(),
+                contact: $('reportContact').value.trim(),
+                projectPrefix: $('reportProjectPrefix').value.trim(),
+                logoData: reportLogoData,
+            }),
+        });
+        showMsg(j.success ? '交付文档公司信息已保存。' : (j.message || '保存失败'), j.success ? 'ok' : 'err');
+    });
 
     let providerFormDirty = false;
     let fetchedModels = [];
@@ -729,6 +810,16 @@
         location.href = 'login.html';
     };
 
+    $('rerunOnboardingBtn').onclick = async () => {
+        const j = await api('/api/onboarding/status', { method: 'POST', body: JSON.stringify({ action: 'reset' }) });
+        if (j.success) {
+            showMsg('已重置新手向导，返回主界面后会重新显示。');
+        } else {
+            showMsg(j.message || '重置向导失败', 'err');
+        }
+    };
+
+    loadReportSettings();
     loadProviders();
     </script>
 </body>

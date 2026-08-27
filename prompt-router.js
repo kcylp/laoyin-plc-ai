@@ -19,4 +19,11 @@ function resolvePromptContent(prompts, series, lang) {
     return prompts[key] || '';
 }
 
-module.exports = { resolvePromptKey, resolvePromptContent };
+function appendSystemMessage(messages, content) {
+    if (content && String(content).trim()) {
+        messages.push({ role: 'system', content: String(content) });
+    }
+    return messages;
+}
+
+module.exports = { resolvePromptKey, resolvePromptContent, appendSystemMessage };

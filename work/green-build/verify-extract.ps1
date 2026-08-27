@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $gb = $PSScriptRoot
-$zip = Join-Path $gb 'LaoyinPLC-Green-v1.0.2.zip'
+$zip = Join-Path $gb 'LaoyinPLC-Green-20260827.zip'
 $extract = Join-Path $gb 'verify-extract'
 if (Test-Path -LiteralPath $extract) { Remove-Item -LiteralPath $extract -Recurse -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -18,6 +18,8 @@ Write-Output ("含 *.db: " + $dbCount)
 Write-Output ("含 探针/压测/e2e: " + $junk.Count)
 Write-Output ("含 bat/cmd: " + $batCount)
 Write-Output ("启动器 EXE 存在: " + (Test-Path -LiteralPath (Join-Path $root '老殷工控PLC助手.exe')))
+Write-Output ("专属许可存在: " + (Test-Path -LiteralPath (Join-Path $root 'LICENSE.txt')))
+Write-Output ("支付宝打赏码存在: " + (Test-Path -LiteralPath (Join-Path $root '支付宝打赏码.jpg')))
 Write-Output ("node 运行时存在: " + (Test-Path -LiteralPath (Join-Path $root 'runtime\node.exe')))
 $shotDir = Join-Path $root '说明文档\screenshots'
 $shotCount = if (Test-Path -LiteralPath $shotDir) { (Get-ChildItem -LiteralPath $shotDir -Filter '*.png' -File | Measure-Object).Count } else { 0 }

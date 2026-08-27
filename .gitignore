@@ -130,6 +130,7 @@ work/green-build/stage/
 work/green-build/verify-extract*/
 work/green-build/verify-clean-profile/
 work/green-build/verify-tamper-profile/
+work/green-build/verify-final-evidence.txt
 work/green-build/老殷工控PLC助手_绿色版_v0.1.zip
 work/sea-toolchain/
 

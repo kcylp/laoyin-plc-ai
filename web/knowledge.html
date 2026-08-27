@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库 - 老殷工控PLC</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/components.css">
+    <style>
+        body { margin: 0; background: var(--tia-canvas); color: var(--tia-text); font: 14px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif; }
+        .kb-shell { min-height: 100vh; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+        .kb-side { border-right: 1px solid var(--tia-line); background: var(--tia-panel); padding: 18px; overflow: auto; }
+        .kb-main { padding: 22px 28px; overflow: auto; }
+        .kb-title { margin: 0 0 14px; font-size: 20px; letter-spacing: 0; }
+        .kb-search { display: flex; gap: 8px; margin-bottom: 14px; }
+        .kb-search input { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid var(--tia-line); border-radius: 6px; }
+        .kb-list { display: grid; gap: 8px; }
+        .kb-item { width: 100%; text-align: left; border: 1px solid var(--tia-line); border-radius: 6px; background: #fff; padding: 9px 10px; cursor: pointer; color: var(--tia-text); }
+        .kb-item:hover, .kb-item.is-active { border-color: var(--tia-accent); background: var(--tia-accent-soft); }
+        .kb-item b { display: block; font-size: 13px; }
+        .kb-item small { color: var(--tia-text-2); }
+        .kb-warning { margin: 0 0 16px; padding: 11px 12px; border: 1px solid var(--tia-warn); border-radius: 6px; color: #8a5a00; background: #fff8e6; }
+        .kb-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; color: var(--tia-text-2); }
+        .kb-meta span { border: 1px solid var(--tia-line); border-radius: 999px; padding: 2px 8px; background: #fff; }
+        .kb-doc { max-width: 980px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .kb-empty { color: var(--tia-text-2); padding: 24px 0; }
+        @media (max-width: 860px) { .kb-shell { grid-template-columns: 1fr; } .kb-side { border-right: 0; border-bottom: 1px solid var(--tia-line); } }
+    </style>
+</head>
+<body>
+    <div class="kb-shell">
+        <aside class="kb-side">
+            <h1 class="kb-title">PLC 知识库</h1>
+            <div class="kb-search">
+                <input id="kbSearch" type="search" placeholder="搜索积木、工艺或报错关键词">
+                <button class="tia-btn is-primary is-sm" id="kbSearchBtn" type="button">搜索</button>
+            </div>
+            <div id="kbList" class="kb-list"></div>
+        </aside>
+        <main class="kb-main">
+            <div id="kbWarning"></div>
+            <h2 id="kbDocTitle" class="kb-title">选择一条知识</h2>
+            <div id="kbMeta" class="kb-meta"></div>
+            <article id="kbDoc" class="kb-doc kb-empty">左侧可按分类浏览，也可以直接搜索。</article>
+        </main>
+    </div>
+    <script src="knowledge.js"></script>
+</body>
+</html>

@@ -4,12 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const repo = path.resolve(__dirname, '..');
-const read = relative => fs.readFileSync(path.join(repo, relative), 'utf8');
+const read = relative => fs.readFileSync(path.join(repo, relative), 'utf8').replace(/^\uFEFF/, '');
 
-test('green build publishes v1.0.2 with launcher and updater', () => {
+test('green build publishes the 20260827 release with launcher and updater', () => {
     const build = read('work/green-build/build-green.ps1');
-    assert.match(build, /\$ver\s*=\s*'v1\.0\.2'/);
-    assert.match(build, /LaoyinPLC-Green-/);
+    assert.match(build, /\$ver\s*=\s*'1\.0\.3'/);
+    assert.match(build, /\$releaseTag\s*=\s*'20260827'/);
+    assert.match(build, /LaoyinPLC-Green-.*releaseTag/);
+    assert.match(build, /SEA_TOOLCHAIN_DIR/);
     assert.match(build, /System\.Web\.Extensions\.dll/);
     assert.match(build, /updater\.cs/);
     assert.match(build, /老殷工控PLC助手更新器\.exe/);
@@ -17,7 +19,7 @@ test('green build publishes v1.0.2 with launcher and updater', () => {
 
 test('launcher validates a ZIP URL and declares the shipped version', () => {
     const launcher = read('work/green-build/launcher.cs');
-    assert.match(launcher, /CurrentVersion\s*=\s*"1\.0\.2"/);
+    assert.match(launcher, /CurrentVersion\s*=\s*"1\.0\.3"/);
     assert.match(launcher, /Path\.GetExtension\(uri\.AbsolutePath\).*"\.zip"/s);
     assert.match(launcher, /ReadManifestBody/);
 });
@@ -34,8 +36,27 @@ test('updater keeps the backup until the new service is healthy', () => {
 
 test('verification targets the new package and updater executable', () => {
     const verify = read('work/green-build/verify-final.ps1');
-    assert.match(verify, /LaoyinPLC-Green-v1\.0\.2\.zip/);
+    assert.match(verify, /LaoyinPLC-Green-20260827\.zip/);
     assert.match(verify, /老殷工控PLC助手更新器\.exe/);
+});
+
+test('public source and green package carry the proprietary license and donation code', () => {
+    const pkg = JSON.parse(read('package.json'));
+    const license = read('LICENSE.txt');
+    const readme = read('README.md');
+    const build = read('work/green-build/build-green.ps1');
+    const verify = read('work/green-build/verify-final.ps1');
+
+    assert.equal(pkg.license, 'UNLICENSED');
+    assert.match(license, /老殷工控专属/);
+    assert.match(license, /未经.*书面授权.*不得.*商用/s);
+    assert.match(license, /打赏.*不.*商业授权/s);
+    assert.match(readme, /支付宝打赏码/);
+    assert.match(readme, /docs\/assets\/支付宝打赏码\.jpg/);
+    assert.match(build, /LICENSE\.txt/);
+    assert.match(build, /支付宝打赏码\.jpg/);
+    assert.match(verify, /LICENSE\.txt/);
+    assert.match(verify, /支付宝打赏码\.jpg/);
 });
 
 test('launcher keeps the customer message private and writes bounded sanitized diagnostics', () => {

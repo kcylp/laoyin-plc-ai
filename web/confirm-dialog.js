@@ -1,4 +1,4 @@
-const modalState = { resolver: null };
+const modalState = { resolver: null, keyHandler: null, previousFocus: null };
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -9,9 +9,22 @@ function setHidden(el, hidden) {
 function closeWith(value) {
     const modal = document.getElementById('confirmModal');
     if (modal) modal.classList.add('hidden');
+    if (modalState.keyHandler) {
+        document.removeEventListener('keydown', modalState.keyHandler, true);
+        modalState.keyHandler = null;
+    }
+    if (modalState.previousFocus && typeof modalState.previousFocus.focus === 'function') {
+        modalState.previousFocus.focus();
+    }
+    modalState.previousFocus = null;
     const resolver = modalState.resolver;
     modalState.resolver = null;
     if (resolver) resolver(value);
+}
+
+function getFocusable(modal) {
+    return Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+        .filter(el => !el.disabled && el.offsetParent !== null);
 }
 
 export function confirmDialog(opts = {}) {
@@ -77,7 +90,33 @@ export function confirmDialog(opts = {}) {
     };
     modal.onclick = (event) => { if (event.target === modal) closeWith(false); };
 
+    if (modalState.keyHandler) document.removeEventListener('keydown', modalState.keyHandler, true);
+    modalState.previousFocus = document.activeElement;
+    modalState.keyHandler = (event) => {
+        if (modal.classList.contains('hidden')) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeWith(false);
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = getFocusable(modal);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
+    document.addEventListener('keydown', modalState.keyHandler, true);
+
     modal.classList.remove('hidden');
+    const confirmCancel = document.getElementById('confirmCancel');
+    if (confirmCancel) confirmCancel.focus();
     return new Promise((resolve) => { modalState.resolver = resolve; });
 }
 

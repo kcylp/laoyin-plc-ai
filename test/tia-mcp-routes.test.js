@@ -55,6 +55,7 @@ test('MCP capability layer is wired additively with auth + localOnly', () => {
     assert.match(tiaMcpRoutesSrc, /callTool\('SearchHardwareCatalog', \{ keyword, limit \}/);
     assert.match(tiaMcpRoutesSrc, /router\.post\('\/search-hardware'[\s\S]+?mcpEnsureAttached\(client\)[\s\S]+?SearchHardwareCatalog/);
     assert.match(tiaMcpRoutesSrc, /callTool\('GetPlcTagTables', \{ softwarePath \}/);
+    assert.match(tiaMcpRoutesSrc, /parseTagTableNames\(result\)/);
     assert.match(tiaMcpRoutesSrc, /callTool\('ExportBlocksAsDocuments'/);
     assert.match(tiaMcpRoutesSrc, /callTool\('GetSoftwareTree', \{ softwarePath \}/);
     assert.match(tiaMcpRoutesSrc, /sameName\.length > 1/);

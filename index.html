@@ -11,6 +11,27 @@
     <link rel="stylesheet" href="web/css/modals.css">
     <link rel="stylesheet" href="web/css/components.css">
     <link rel="stylesheet" href="web/css/chat-content.css">
+    <style>
+        .onboarding-banner,.onboarding-root,.welcome-card{margin:12px 16px;padding:14px 16px;border:1px solid var(--tia-accent-line);border-radius:8px;background:var(--tia-accent-soft);color:var(--tia-text);font-size:13px;line-height:1.6}
+        .onboarding-banner{display:flex;gap:12px;align-items:center;justify-content:space-between}
+        .onboarding-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+        .onboarding-step,.scenario-card{border:1px solid var(--tia-line);border-radius:8px;background:#fff;padding:10px;text-align:left}
+        .scenario-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+        .scenario-card{cursor:pointer;color:var(--tia-accent-2);font-weight:700}
+        .welcome-card h2{margin:0 0 6px;font-size:17px;letter-spacing:0}
+        .welcome-note{margin-top:10px;color:var(--tia-text-2)}
+        .report-ready{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--tia-accent-line);background:var(--tia-accent-soft);font-size:13px;color:var(--tia-text)}
+        .report-ready .spacer{flex:1}
+        .report-modal{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:min(1120px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));overflow:hidden}
+        .report-modal .tia-modal-body{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:16px;min-height:0;overflow:hidden}
+        .report-editor{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;padding-right:4px}
+        .report-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:var(--tia-text-2)}
+        .report-field textarea{min-height:112px;resize:vertical;line-height:1.55}
+        .report-preview{width:100%;height:100%;min-height:440px;border:1px solid var(--tia-line);background:#fff}
+        .report-status{min-height:22px;color:var(--tia-text-2);font-size:12px}
+        .report-status.is-error{color:var(--tia-danger)}
+        @media(max-width:900px){.report-modal .tia-modal-foot{flex-wrap:wrap}.report-modal .tia-modal-foot .spacer{display:none}.report-modal #reportGenerate{flex:1 1 100%}.report-modal .tia-modal-foot button:not(#reportGenerate){flex:1 1 auto}.onboarding-steps,.scenario-grid{grid-template-columns:1fr 1fr}.report-modal .tia-modal-body{grid-template-columns:1fr;overflow:auto}.report-preview{min-height:380px}}
+    </style>
 </head>
 <body class="tia-portal-shell">
     <div class="tia-shell">
@@ -19,8 +40,8 @@
             <div class="tb-project">项目：<span id="tbProject">—</span><span class="tia-badge is-info" id="tbSeries">S7-1200</span></div>
             <div class="tb-user">
                 <span id="tbUser">—</span>
-                <button class="tia-btn is-ghost is-sm" id="btnSettings" type="button">设置</button>
-                <button class="tia-btn is-ghost is-sm" id="btnLogout" type="button">退出</button>
+                <button class="tia-btn is-ghost is-sm" id="btnSettings" type="button" title="打开设置">设置</button>
+                <button class="tia-btn is-ghost is-sm" id="btnLogout" type="button" title="退出登录">退出</button>
             </div>
         </header>
 
@@ -28,19 +49,19 @@
             <div class="tia-ribbon-group">
                 <span class="rg-label">系列</span>
                 <div class="tia-tabs" id="seriesTabs">
-                    <button class="tia-tab is-disabled" data-series="s200smart" type="button">S7-200 SMART<span class="tab-todo">待开发</span></button>
-                    <button class="tia-tab is-active" data-series="s1200" type="button">S7-1200</button>
-                    <button class="tia-tab" data-series="s1500" type="button">S7-1500</button>
+                    <button class="tia-tab is-disabled" data-series="s200smart" type="button" title="切换到 S7-200 SMART（待开发）">S7-200 SMART<span class="tab-todo">待开发</span></button>
+                    <button class="tia-tab is-active" data-series="s1200" type="button" title="切换到 S7-1200">S7-1200</button>
+                    <button class="tia-tab" data-series="s1500" type="button" title="切换到 S7-1500">S7-1500</button>
                 </div>
             </div>
             <div class="tia-ribbon-group">
                 <span class="rg-label">语言</span>
                 <div class="tia-tabs" id="langTabs">
-                    <button class="tia-tab" data-lang="lad" type="button">LAD</button>
-                    <button class="tia-tab" data-lang="fbd" type="button">FBD</button>
-                    <button class="tia-tab is-active" data-lang="scl" type="button">SCL</button>
-                    <button class="tia-tab" data-lang="stl" type="button">STL</button>
-                    <button class="tia-tab is-disabled" data-lang="graph" type="button">GRAPH<span class="tab-todo">待开发</span></button>
+                    <button class="tia-tab" data-lang="lad" type="button" title="输出梯形图 LAD">LAD</button>
+                    <button class="tia-tab" data-lang="fbd" type="button" title="输出功能块图 FBD">FBD</button>
+                    <button class="tia-tab is-active" data-lang="scl" type="button" title="输出结构化文本 SCL">SCL</button>
+                    <button class="tia-tab" data-lang="stl" type="button" title="输出语句表 STL">STL</button>
+                    <button class="tia-tab is-disabled" data-lang="graph" type="button" title="GRAPH 待开发">GRAPH<span class="tab-todo">待开发</span></button>
                 </div>
             </div>
             <div class="tia-ribbon-group">
@@ -55,13 +76,20 @@
                 </span>
             </div>
             <div class="tia-ribbon-group is-right">
-                <button class="tia-btn is-ghost is-sm" id="btnTiaOnline" type="button">
+                <button class="tia-btn is-ghost is-sm" id="btnDeliveryReport" type="button" title="生成并导出交付文档">交付文档</button>
+                <button class="tia-btn is-ghost is-sm" id="btnTiaOnline" type="button" title="打开博途在线操作">
                     在线操作 <i id="tiaOnlineLed" class="tia-led is-idle"></i>
                 </button>
-                <button class="tia-btn is-ghost is-sm" id="btnClear" type="button">清空会话</button>
-                <a class="tia-btn is-ghost is-sm" href="env-check.html">环境自检</a>
+                <button class="tia-btn is-ghost is-sm" id="btnClear" type="button" title="清空当前会话">清空会话</button>
+                <a class="tia-btn is-ghost is-sm" href="env-check.html" title="打开环境自检">环境自检</a>
             </div>
         </nav>
+
+        <div class="report-ready hidden" id="reportCompilePrompt" role="status">
+            <span>编译已通过，可以生成交付文档。</span><span class="spacer"></span>
+            <button class="tia-btn is-primary is-sm" id="reportPromptGenerate" type="button">生成文档</button>
+            <button class="tia-btn is-ghost is-sm" id="reportPromptDismiss" type="button" aria-label="关闭提示">关闭</button>
+        </div>
 
         <div class="tia-body">
             <div class="tia-tree-col">
@@ -77,13 +105,15 @@
                 <aside class="tia-tree" id="projectTree" aria-label="项目树"></aside>
             </div>
             <main class="tia-canvas" aria-label="工程会话">
+                <div class="onboarding-banner hidden" id="onboardingBanner" role="status" aria-live="polite"></div>
+                <section class="onboarding-root hidden" id="onboardingRoot" aria-label="新手向导"></section>
                 <div class="tia-messages" id="messages"></div>
                 <div class="tia-composer">
                     <textarea id="userInput" rows="3" placeholder="输入编程需求，例如：电机起保停，带急停与运行指示。勾选「整工程」= 从零建完整工程"></textarea>
                     <div class="composer-side">
                         <label class="composer-scaffold" title="整工程模式：自然语言 → AI 生成工程 spec → 离线校验 → 一键建完整工程（新项目/硬件/变量表/编译）"><input type="checkbox" id="scaffoldMode"> 整工程</label>
-                        <button class="tia-btn is-primary" id="sendButton" type="button"><span id="sendText">发送</span><span id="sendLoader" class="hidden">发送中</span></button>
-                        <button class="tia-btn is-ghost hidden" id="stopButton" type="button">停止生成</button>
+                        <button class="tia-btn is-primary" id="sendButton" type="button" title="发送当前需求"><span id="sendText">发送</span><span id="sendLoader" class="hidden">发送中</span></button>
+                        <button class="tia-btn is-ghost hidden" id="stopButton" type="button" title="停止当前生成">停止生成</button>
                     </div>
                 </div>
                 <div class="tia-context-bar" id="contextBar">
@@ -208,6 +238,21 @@
         </div>
     </div>
 
+    <div class="tia-modal-mask hidden" id="shortcutHelpModal">
+        <div class="tia-modal" role="dialog" aria-modal="true" aria-labelledby="shortcutHelpTitle">
+            <div class="tia-modal-head"><span id="shortcutHelpTitle">快捷键</span><button class="tia-modal-x" id="shortcutHelpClose" type="button" aria-label="关闭" title="关闭">×</button></div>
+            <div class="tia-modal-body">
+                <table class="tia-table is-kv">
+                    <tr><td>Enter</td><td>发送当前需求</td></tr>
+                    <tr><td>Shift+Enter</td><td>换行编辑长需求</td></tr>
+                    <tr><td>Ctrl+K</td><td>打开博途在线工具搜索</td></tr>
+                    <tr><td>F1 / Ctrl+/</td><td>打开快捷键帮助</td></tr>
+                    <tr><td>Esc</td><td>关闭弹窗</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div class="tia-modal-mask hidden" id="histModal">
         <div class="tia-modal" role="dialog" aria-modal="true" aria-labelledby="histTitle">
             <div class="tia-modal-head"><span id="histTitle">写入历史 — 回滚</span><button class="tia-modal-x" id="histClose" type="button" aria-label="关闭">×</button></div>
@@ -221,9 +266,39 @@
         </div>
     </div>
 
+    <div class="tia-modal-mask hidden" id="reportModal">
+        <div class="tia-modal report-modal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+            <div class="tia-modal-head"><span id="reportTitle">交付文档</span><button class="tia-modal-x" id="reportClose" type="button" aria-label="关闭">×</button></div>
+            <div class="tia-modal-body">
+                <div class="report-editor">
+                    <label class="report-field" for="reportProjectNumber">项目编号
+                        <input class="tia-input" id="reportProjectNumber" autocomplete="off">
+                    </label>
+                    <label class="report-field" for="reportOverview">设备方案概述
+                        <textarea class="tia-input" id="reportOverview"></textarea>
+                    </label>
+                    <label class="report-field" for="reportOperationLogic">操作逻辑说明
+                        <textarea class="tia-input" id="reportOperationLogic"></textarea>
+                    </label>
+                    <div class="report-status" id="reportStatus" aria-live="polite"></div>
+                </div>
+                <iframe class="report-preview" id="reportPreview" title="交付文档预览"></iframe>
+            </div>
+            <div class="tia-modal-foot">
+                <button class="tia-btn is-primary" id="reportGenerate" type="button">读取真实工程并生成</button>
+                <span class="spacer"></span>
+                <button class="tia-btn is-ghost" id="reportDownloadMarkdown" type="button" disabled>Markdown</button>
+                <button class="tia-btn is-ghost" id="reportDownloadWord" type="button" disabled>Word</button>
+                <button class="tia-btn is-ghost" id="reportPrintPdf" type="button" disabled>打印 PDF</button>
+            </div>
+        </div>
+    </div>
+
     <script src="plc-language.js"></script>
     <script src="tia-confirmation.js"></script>
     <script src="tia-import-state.js"></script>
     <script type="module" src="web/app.js"></script>
+    <script type="module" src="web/onboarding.js"></script>
+    <script type="module" src="web/report-panel.js"></script>
 </body>
 </html>

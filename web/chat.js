@@ -23,14 +23,6 @@ export const chatMethods = {
             return;
         }
 
-        // 检查是否 PLC 相关问题
-        if (!this.isPLCRelated(message)) {
-            this.addUserMessage(message);
-            this.addAssistantMessage('抱歉，我是专业的PLC编程助手，专注于西门子 S7-200 SMART/1200/1500 的编程。请咨询梯形图、SCL、STL、定时器、计数器、通信等相关问题。');
-            this.userInput.value = '';
-            return;
-        }
-
         // 检查问题次数
         const canAsk = await this.checkQuestionLimit();
         if (!canAsk) return;
@@ -53,29 +45,6 @@ export const chatMethods = {
     isAskingAboutModel(message) {
         const modelKeywords = ['哪个AI', '什么AI', '什么模型', 'AI模型', '哪个模型', '什么系统', '基于什么', '用的什么', '你是用什么'];
         return modelKeywords.some(keyword => message.includes(keyword));
-    },
-
-    isPLCRelated(message) {
-        const plcKeywords = [
-            'PLC', 'plc', '可编程逻辑控制器', '可编程控制器',
-            '梯形图', '指令表', '功能块', 'FB', 'FC', 'OB', 'DB',
-            '西门子', 'SIEMENS', '三菱', 'MITSUBISHI', '欧姆龙', 'OMRON',
-            'Step7', 'TIA', '博途', 'SMART', 'S7-200', 'S7-1200', 'S7-1500',
-            '模拟量', '数字量', 'IO', 'I/O', '输入输出', 'AIW', 'AQW',
-            '传感器', '执行器', '变频器', '触摸屏', 'HMI',
-            '通信', '以太网', 'Profibus', 'Profinet', 'Modbus', 'OPC',
-            '程序', '编程', '逻辑', '控制', '自动化', '代码',
-            '定时器', '计数器', '比较', '运算', 'TON', 'TOF', 'TP', 'CTU',
-            'LD', 'LDI', 'AND', 'ANI', 'OR', 'ORI', 'OUT', 'SET', 'RST',
-            'MOV', 'ADD', 'SUB', 'MUL', 'DIV', 'CMP', 'SCL', 'STL', 'LAD', 'FBD',
-            '工业', '自动化', '控制系统', '生产线', '电机', '起保停', '星三角',
-            '变量', '数据块', '主程序', '子程序', '中断', 'SCL代码', '写程序',
-            '梯形图代码', '程序块', 'I0.0', 'Q0.0', 'VW', 'VB', 'MW'
-        ];
-
-        return plcKeywords.some(keyword =>
-            message.toLowerCase().includes(keyword.toLowerCase())
-        );
     },
 
     // 整工程模式:与「写块进当前工程」同一个输入框,但走建工程链路:
@@ -232,6 +201,7 @@ export const chatMethods = {
 
             const allowProjectContext = this.projectContextAllowed();
             const includeAllVariables = this.projectContextAllVariables();
+            const allowKnowledgeContext = this.knowledgeContextAllowed();
 
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -246,6 +216,9 @@ export const chatMethods = {
                     modelId: this.modelId,
                     includeContext: allowProjectContext,
                     includeAllVariables,
+                    knowledgeEnabled: allowKnowledgeContext,
+                    knowledgeTopN: 3,
+                    knowledgeMaxPromptChars: 9000,
                     history: this.collectVisibleHistory(),
                     regenerate: !!this.isRegenerating
                 }),
@@ -291,8 +264,12 @@ export const chatMethods = {
                             responseText += data.content;
                             this.updateStreamingMessage(assistantMessageContent, responseText);
                         } else if (data.type === 'context') {
-                            this.updateContextBar(data.projectContext || {});
-                            this.lastProjectContextDetails = data.details || null;
+                            this.lastKnowledgeContext = data.knowledgeContext || null;
+                            this.updateContextBar(data.projectContext || {}, this.lastKnowledgeContext);
+                            this.lastProjectContextDetails = {
+                                project: data.details || data.projectContext || null,
+                                knowledge: this.lastKnowledgeContext
+                            };
                         } else if (data.type === 'done') {
                             responseText = data.content;
                         } else if (data.type === 'aborted') {
@@ -357,8 +334,10 @@ export const chatMethods = {
         delete element.dataset.streamFormatted;
         element.__streamTextNode = null;
         element.innerHTML = this.formatMessage(text);
+        this.linkKnowledgeReferences(element);
         const messageEl = element.closest('.message');
         this.addTreeBlocks(text, messageEl);
+        if (messageEl && messageEl.classList.contains('assistant-message')) this.appendTiaErrorActions(messageEl, text);
         if (messageEl && messageEl.classList.contains('assistant-message')) this.appendAssistantActions(messageEl);
         this.scrollToBottom();
     },
@@ -393,6 +372,47 @@ export const chatMethods = {
         actions.innerHTML = '<button class="tia-btn is-ghost is-xs" type="button" data-regenerate>重新生成</button>';
         const btn = actions.querySelector('[data-regenerate]');
         btn.addEventListener('click', () => {
+            if (this.isResponding) return;
+            const previous = this.findPreviousUserMessage(messageDiv);
+            if (!previous) return;
+            messageDiv.remove();
+            this.isRegenerating = true;
+            this.getAIResponse(previous);
+        });
+        messageDiv.appendChild(actions);
+    },
+
+    appendTiaErrorActions(messageDiv, text) {
+        if (!messageDiv || messageDiv.querySelector('[data-tia-error-actions]')) return;
+        const body = String(text || '');
+        if (!/(TIA|Openness|博途|MCP|导入|编译|下载|写入|环境|诊断|line number|UID|Invalid XML|请求出错|失败|异常)/i.test(body)) return;
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        actions.dataset.tiaErrorActions = '1';
+        actions.innerHTML = [
+            '<a class="tia-btn is-ghost is-xs" href="env-check.html">运行环境诊断</a>',
+            '<button class="tia-btn is-ghost is-xs" type="button" data-export-diagnose>导出诊断包</button>',
+            '<button class="tia-btn is-ghost is-xs" type="button" data-error-regenerate>重新生成</button>'
+        ].join('');
+        const exportBtn = actions.querySelector('[data-export-diagnose]');
+        if (exportBtn) exportBtn.addEventListener('click', async () => {
+            exportBtn.disabled = true;
+            try {
+                const r = await fetch('/api/diagnose/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
+                    body: JSON.stringify({ deep: true })
+                });
+                const j = await r.json().catch(() => ({}));
+                this.addAssistantMessage(j.success === false ? ('诊断包导出失败：' + (j.message || r.status)) : ('诊断包已导出：' + (j.packagePath || j.folder || '请查看诊断输出')));
+            } catch (e) {
+                this.addAssistantMessage('诊断包导出异常：' + e.message);
+            } finally {
+                exportBtn.disabled = false;
+            }
+        });
+        const regenBtn = actions.querySelector('[data-error-regenerate]');
+        if (regenBtn) regenBtn.addEventListener('click', () => {
             if (this.isResponding) return;
             const previous = this.findPreviousUserMessage(messageDiv);
             if (!previous) return;
@@ -451,6 +471,10 @@ export const chatMethods = {
         return localStorage.getItem('projectContextAllVariables') === 'true';
     },
 
+    knowledgeContextAllowed() {
+        return localStorage.getItem('knowledgeContextAllowed') !== 'false';
+    },
+
     initializeProjectContextBar() {
         const allow = document.getElementById('ctxAllow');
         const allVars = document.getElementById('ctxAllVars');
@@ -486,22 +510,32 @@ export const chatMethods = {
         else this.loadContextStatus();
     },
 
-    updateContextBar(status) {
+    knowledgeContextSuffix(knowledgeStatus) {
+        if (!knowledgeStatus || knowledgeStatus.enabled === false) return '';
+        if (knowledgeStatus.error) return ' · 知识库加载失败';
+        const count = Array.isArray(knowledgeStatus.matches) ? knowledgeStatus.matches.length : 0;
+        const tokens = knowledgeStatus.tokenEstimate || 0;
+        if (!tokens) return count ? ` · 知识库 ${count} 条` : ' · 知识库未命中';
+        return ` · 知识库 ${count} 条 / ${tokens} token`;
+    },
+
+    updateContextBar(status, knowledgeStatus = null) {
         const led = document.getElementById('ctxLed');
         const text = document.getElementById('ctxText');
         if (!led || !text) return;
+        const knowledge = this.knowledgeContextSuffix(knowledgeStatus);
 
         if (status.enabled === false) {
             led.className = 'tia-led is-idle';
-            text.textContent = '工程上下文未发送给 AI';
+            text.textContent = '工程上下文未发送给 AI' + knowledge;
         } else if (status.connected) {
             led.className = 'tia-led is-ok';
             const vars = status.totalVars || status.variableCount || 0;
             const chars = status.charCount ? ` · ${status.charCount} 字` : '';
-            text.textContent = `已连接 ${status.project || '当前工程'} · ${status.blockCount || 0} 个块 · ${vars} 个变量${chars}`;
+            text.textContent = `已连接 ${status.project || '当前工程'} · ${status.blockCount || 0} 个块 · ${vars} 个变量${chars}${knowledge}`;
         } else {
             led.className = 'tia-led is-idle';
-            text.textContent = '未连接博途 —— AI 将给出通用示例，地址需自行调整';
+            text.textContent = '未连接博途 —— AI 将给出通用示例，地址需自行调整' + knowledge;
         }
     },
 
@@ -586,6 +620,42 @@ export const chatMethods = {
             ? (payload.prompt || payload.summary)
             : JSON.stringify(payload || {}, null, 2);
         detailBox.innerHTML = `<pre>${this.escapeHtml(text || '暂无上下文数据')}</pre>`;
+    },
+
+    linkKnowledgeReferences(root) {
+        if (!root || !root.ownerDocument) return;
+        const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                const parent = node.parentElement;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                if (parent.closest('a, code, pre, .code-block')) return NodeFilter.FILTER_REJECT;
+                return /《[^《》]{1,60}》/.test(node.nodeValue || '')
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_REJECT;
+            }
+        });
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        for (const node of nodes) {
+            const fragment = root.ownerDocument.createDocumentFragment();
+            const text = node.nodeValue || '';
+            let last = 0;
+            text.replace(/《([^《》]{1,60})》/g, (match, title, offset) => {
+                if (offset > last) fragment.appendChild(root.ownerDocument.createTextNode(text.slice(last, offset)));
+                const link = root.ownerDocument.createElement('a');
+                link.className = 'knowledge-ref';
+                link.href = `web/knowledge.html?q=${encodeURIComponent(title)}`;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.textContent = match;
+                link.title = '打开知识库原文';
+                fragment.appendChild(link);
+                last = offset + match.length;
+                return match;
+            });
+            if (last < text.length) fragment.appendChild(root.ownerDocument.createTextNode(text.slice(last)));
+            node.parentNode.replaceChild(fragment, node);
+        }
     }
 };
 

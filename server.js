@@ -33,6 +33,7 @@ const createAiProviderRoutes = require('./routes/ai-providers');
 const createTiaRoutes = require('./routes/tia');
 const createTiaMcpRoutes = require('./routes/tia-mcp');
 const createAdminRoutes = require('./routes/admin');
+const createReportRoutes = require('./routes/report');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
@@ -66,6 +67,7 @@ app.use('/api', createAdminRoutes(deps));
 app.use('/api', createTiaRoutes.createLegacyValidateRoutes(deps));
 app.use('/api/tia/mcp', createTiaMcpRoutes(deps));
 app.use('/api/tia', createTiaRoutes(deps));
+app.use('/api/report', createReportRoutes(deps));
 app.get('/api/license', (req, res) => res.json(publicStatus()));
 app.get('/', noStore, (req, res) => res.sendFile(path.join(APP_ROOT, 'login.html')));
 app.use((err, req, res, next) => {

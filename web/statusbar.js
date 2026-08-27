@@ -26,11 +26,34 @@ export const statusbarMethods = {
     bindEvents() {
         this.sendButton.addEventListener('click', () => this.sendMessage());
         if (this.stopButton) this.stopButton.addEventListener('click', () => this.stopGenerating());
-        this.userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
+        this.userInput.addEventListener('keydown', (event) => {
+            const key = event.key;
+            if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey) {
+                event.preventDefault();
                 this.sendMessage();
             }
+        });
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+            if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'k') {
+                event.preventDefault();
+                const openBtn = document.getElementById('btnTiaOnline');
+                const panel = document.getElementById('onlinePanel');
+                if (openBtn && panel && panel.classList.contains('hidden')) openBtn.click();
+                const search = document.getElementById('odToolName') || document.getElementById('toolListSearch');
+                if (search) search.focus();
+            } else if (key === 'F1' || ((event.ctrlKey || event.metaKey) && key === '/')) {
+                event.preventDefault();
+                this.openShortcutHelp();
+            } else if (key === 'Escape') {
+                this.closeShortcutHelp();
+            }
+        });
+        const helpClose = document.getElementById('shortcutHelpClose');
+        if (helpClose) helpClose.addEventListener('click', () => this.closeShortcutHelp());
+        const helpModal = document.getElementById('shortcutHelpModal');
+        if (helpModal) helpModal.addEventListener('click', (event) => {
+            if (event.target === helpModal) this.closeShortcutHelp();
         });
 
         this.seriesButtons.forEach(btn => {
@@ -59,6 +82,19 @@ export const statusbarMethods = {
         if (rtRefresh) rtRefresh.addEventListener('click', () => this.refreshRealTree());
         this.refreshRealTree();
         this.setupOnlinePanel();
+    },
+
+    openShortcutHelp() {
+        const modal = document.getElementById('shortcutHelpModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        const close = document.getElementById('shortcutHelpClose');
+        if (close) close.focus();
+    },
+
+    closeShortcutHelp() {
+        const modal = document.getElementById('shortcutHelpModal');
+        if (modal) modal.classList.add('hidden');
     },
 
     setSeries(series) {

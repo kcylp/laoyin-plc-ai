@@ -153,5 +153,44 @@ router.get('/user', authenticateToken, (req, res) => {
     });
 });
 
+function readOnboardingStatus(userId) {
+    const row = db.prepare(`
+        SELECT onboarding_completed, onboarding_skipped
+        FROM user_settings
+        WHERE user_id = ?
+    `).get(userId);
+    return {
+        completed: !!(row && row.onboarding_completed),
+        skipped: !!(row && row.onboarding_skipped)
+    };
+}
+
+// ---------- 路由: 首启向导状态（按 user_id 隔离） ----------
+router.get('/onboarding/status', authenticateToken, (req, res) => {
+    res.json({ success: true, onboarding: readOnboardingStatus(req.user.id) });
+});
+
+router.post('/onboarding/status', authenticateToken, (req, res) => {
+    const action = String((req.body && req.body.action) || '').trim();
+    const states = {
+        complete: [1, 0],
+        skip: [0, 1],
+        reset: [0, 0]
+    };
+    if (!Object.prototype.hasOwnProperty.call(states, action)) {
+        return res.status(400).json({ success: false, message: '未知向导操作' });
+    }
+    const [completed, skipped] = states[action];
+    db.prepare(`
+        INSERT INTO user_settings (user_id, onboarding_completed, onboarding_skipped, updated_at)
+        VALUES (?, ?, ?, datetime('now','localtime'))
+        ON CONFLICT(user_id) DO UPDATE SET
+            onboarding_completed = excluded.onboarding_completed,
+            onboarding_skipped = excluded.onboarding_skipped,
+            updated_at = excluded.updated_at
+    `).run(req.user.id, completed, skipped);
+    res.json({ success: true, onboarding: readOnboardingStatus(req.user.id) });
+});
+
     return router;
 };

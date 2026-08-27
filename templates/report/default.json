@@ -1,0 +1,14 @@
+{
+  "title": "PLC 程序设计交付文档",
+  "documentNotice": "本文档描述的 PLC 程序由 AI 辅助生成，属于工程草稿。编译通过不代表逻辑、接线、整定值或安全要求已经验证。",
+  "sections": [
+    { "id": "overview", "title": "设备方案" },
+    { "id": "program", "title": "程序结构" },
+    { "id": "io", "title": "I/O 分配" },
+    { "id": "operation", "title": "操作逻辑说明" },
+    { "id": "compile", "title": "编译结论" },
+    { "id": "safety", "title": "上机前必须现场确认" },
+    { "id": "history", "title": "修改履历" },
+    { "id": "appendix", "title": "附录 A：完整变量表" }
+  ]
+}
